@@ -13,6 +13,7 @@ builder.Services.AddControllers()
 // Weather: read the building location and NWS settings from appsettings.json...
 builder.Services.Configure<BuildingOptions>(builder.Configuration.GetSection(BuildingOptions.SectionName));
 builder.Services.Configure<NwsOptions>(builder.Configuration.GetSection(NwsOptions.SectionName));
+builder.Services.Configure<WorkdayOptions>(builder.Configuration.GetSection(WorkdayOptions.SectionName));
 
 // In-memory cache, used to reuse a recent weather reading instead of calling NWS on every request.
 builder.Services.AddMemoryCache();

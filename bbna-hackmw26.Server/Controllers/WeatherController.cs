@@ -106,6 +106,33 @@ namespace bbna_hackmw26.Server.Controllers
         }
 
         /// <summary>
+        /// GET /api/weather/forecast
+        /// Returns the expected weather for each upcoming workday (Mon-Fri, about a week ahead),
+        /// split into Overnight / MorningCommute / OfficeHours / EveningCommute windows plus a
+        /// WholeDay total: snow and ice in inches, lowest wind chill and highest heat index in °F,
+        /// strongest gust in mph, and highest chance of precipitation.
+        /// Window times come from the "Workday" section of appsettings.json.
+        /// See <see cref="WorkdayForecastResponse"/> for every field.
+        /// </summary>
+        /// <response code="200">The workday forecast.</response>
+        /// <response code="502">The National Weather Service could not be reached or returned an error.</response>
+        [HttpGet("forecast", Name = "GetWorkdayForecast")]
+        [ProducesResponseType<WorkdayForecastResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway)]
+        public async Task<IActionResult> GetForecast([FromServices] IOptions<WorkdayOptions> workday, CancellationToken ct)
+        {
+            try
+            {
+                var raw = await weather.GetForecastGridAsync(ct);
+                return Ok(WorkdayForecastBuilder.Build(raw, building.Value, workday.Value, DateTimeOffset.UtcNow));
+            }
+            catch (HttpRequestException ex)
+            {
+                return NwsUnavailable(ex);
+            }
+        }
+
+        /// <summary>
         /// The error response used when NWS is down or returns an error: 502 Bad Gateway
         /// (an upstream service failed, not our server) with a standard error body.
         /// </summary>

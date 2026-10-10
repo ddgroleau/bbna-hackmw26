@@ -47,5 +47,41 @@ namespace bbna_hackmw26.Server.Weather
         // How long (in minutes) to reuse the active alerts list before asking NWS again.
         // Kept short because warnings like tornado warnings are time-critical.
         public int AlertsCacheMinutes { get; set; } = 1;
+
+        // How long (in minutes) to reuse the multi-day forecast before asking NWS again.
+        // NWS updates the forecast roughly once an hour, so 15 minutes keeps it fresh.
+        public int ForecastCacheMinutes { get; set; } = 15;
+    }
+
+    /// <summary>
+    /// The building's working day, used by GET /api/weather/forecast to split each
+    /// workday into time windows. Loaded from the "Workday" section of appsettings.json.
+    ///
+    /// With the defaults, each workday is split into:
+    ///   Overnight       18:00 the evening before -> 06:00   (snow/ice building up before anyone leaves home)
+    ///   Morning commute 06:00 -> 09:00
+    ///   Office hours    09:00 -> 16:00
+    ///   Evening commute 16:00 -> 18:00
+    /// All times are local building time (see TimeZone).
+    /// </summary>
+    public class WorkdayOptions
+    {
+        // Name of the section in appsettings.json these values are read from.
+        public const string SectionName = "Workday";
+
+        // IANA time zone of the building. Kansas City is US Central time (handles daylight saving automatically).
+        public string TimeZone { get; set; } = "America/Chicago";
+
+        // When the morning commute starts (= when the overnight window ends).
+        public TimeOnly MorningCommuteStart { get; set; } = new(6, 0);
+
+        // When office hours start (= when the morning commute ends).
+        public TimeOnly WorkStart { get; set; } = new(9, 0);
+
+        // When office hours end (= when the evening commute starts).
+        public TimeOnly WorkEnd { get; set; } = new(16, 0);
+
+        // When the evening commute ends (= when the next overnight window starts).
+        public TimeOnly EveningCommuteEnd { get; set; } = new(18, 0);
     }
 }
