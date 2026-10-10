@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fetchDecisionLog } from '../api';
 import type { AuditEvent, DecisionRecordDetail } from '../api';
 import { Icon, PageHead } from '../components';
 import type { IconName } from '../components';
+import { EXPORT_FORMATS, exportDecisions } from '../exportDecisions';
+import type { ExportFormat } from '../exportDecisions';
 import { POSTURES, formatDateTime } from '../format';
 
 const EVENT_ICONS: Record<AuditEvent['kind'], IconName> = {
@@ -24,16 +26,6 @@ function integrityLabel({ integrity }: DecisionRecordDetail): string {
     return integrity.valid
         ? `Hash chain verified (${integrity.eventCount} events)`
         : `Chain broken at event ${integrity.brokenAtSeq}`;
-}
-
-function exportRecord(detail: DecisionRecordDetail) {
-    const json = JSON.stringify({ exportedAt: new Date().toISOString(), detail }, null, 2);
-    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${detail.record.id}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
 }
 
 // Everything on this page is read from the decision log (GET /api/decisions).
@@ -77,9 +69,7 @@ export function DecisionRecordPage({ current }: { current?: DecisionRecordDetail
                 eyebrow="Audit trail"
                 title="Decision record"
                 subtitle="A reconstructable record of what was known, when, and by whom."
-                action={selected && (
-                    <button className="btn" onClick={() => exportRecord(selected)}><Icon name="file" size={18} />Export record</button>
-                )}
+                action={selected && log && <ExportMenu selected={selected} log={log} />}
             />
             <div className="stack">
                 {error && (
@@ -139,6 +129,61 @@ export function DecisionRecordPage({ current }: { current?: DecisionRecordDetail
                 )}
             </div>
         </>
+    );
+}
+
+// Export the selected record or the whole log as a PDF report, an Excel workbook, or JSON.
+function ExportMenu({ selected, log }: { selected: DecisionRecordDetail; log: DecisionRecordDetail[] }) {
+    const menu = useRef<HTMLDetailsElement>(null);
+    const [scope, setScope] = useState<'record' | 'log'>('record');
+    const [busy, setBusy] = useState<ExportFormat>();
+    const [error, setError] = useState<string>();
+
+    async function run(format: ExportFormat) {
+        setBusy(format);
+        setError(undefined);
+        try {
+            if (scope === 'record') {
+                await exportDecisions([selected], format, selected.record.id);
+            } else {
+                await exportDecisions(log, format, `decision-log-${new Date().toISOString().slice(0, 10)}`);
+            }
+            menu.current?.removeAttribute('open');
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'The export failed.');
+        } finally {
+            setBusy(undefined);
+        }
+    }
+
+    return (
+        <details className="export-menu" ref={menu}>
+            <summary className="btn"><Icon name="file" size={18} />Export</summary>
+            <div className="export-panel">
+                <fieldset>
+                    <legend className="eyebrow muted">Include</legend>
+                    <label>
+                        <input type="radio" name="export-scope" checked={scope === 'record'} onChange={() => setScope('record')} />
+                        This record ({selected.record.id})
+                    </label>
+                    <label>
+                        <input type="radio" name="export-scope" checked={scope === 'log'} onChange={() => setScope('log')} />
+                        Entire log ({log.length} {log.length === 1 ? 'record' : 'records'})
+                    </label>
+                </fieldset>
+                <ul>
+                    {EXPORT_FORMATS.map(format => (
+                        <li key={format.id}>
+                            <button type="button" onClick={() => run(format.id)} disabled={!!busy}>
+                                <strong>{busy === format.id ? 'Preparing…' : format.label}</strong>
+                                <span>{format.detail}</span>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+                {error && <p className="error-text">{error}</p>}
+            </div>
+        </details>
     );
 }
 

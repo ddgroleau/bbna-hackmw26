@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import type { AnalysisState, LiveForecast, LiveWeather, Posture, Situation } from '../api';
+import type { FormEvent } from 'react';
+import { recordDecision } from '../api';
+import type { AnalysisState, DecisionRecordDetail, LiveForecast, LiveWeather, Posture, Situation } from '../api';
 import { Icon, PageHead } from '../components';
 import { AUDIENCES, AUDIENCE_ORDER, POSTURES, POSTURE_ORDER, formatCount, formatCountdown, formatDateTime, formatTemp, formatTime, useNow } from '../format';
 
@@ -15,10 +17,19 @@ interface Props {
     liveWeather?: LiveWeatherState;
     loading: boolean;
     onRefresh: () => void;
+    // Called once the decision is in the log, to move on to the notification package.
     onNotify: (posture: Posture) => void;
+    record?: DecisionRecordDetail;
+    recordError?: string;
+    onRecorded: (record: DecisionRecordDetail) => void;
+    // The note the agent's current recommendation was made with, if any.
+    managerNote?: string;
+    onReconsider: (note: string | undefined) => void;
 }
 
-export function SituationPage({ situation, analysis, liveWeather, loading, onRefresh, onNotify }: Props) {
+export function SituationPage({
+    situation, analysis, liveWeather, loading, onRefresh, onNotify, record, recordError, onRecorded, managerNote, onReconsider,
+}: Props) {
     const { facility, decisionWindow } = situation;
     const busy = loading || analysis.status === 'loading';
     return (
@@ -42,6 +53,11 @@ export function SituationPage({ situation, analysis, liveWeather, loading, onRef
                         live={!!liveWeather}
                         onRefresh={onRefresh}
                         onNotify={onNotify}
+                        record={record}
+                        recordError={recordError}
+                        onRecorded={onRecorded}
+                        managerNote={managerNote}
+                        onReconsider={onReconsider}
                     />
                     {liveWeather
                         ? <LiveWeatherData situation={situation} liveWeather={liveWeather} />
@@ -56,12 +72,22 @@ export function SituationPage({ situation, analysis, liveWeather, loading, onRef
     );
 }
 
-interface RecommendationProps extends Pick<Props, 'situation' | 'analysis' | 'onRefresh' | 'onNotify'> {
-    live: boolean;
-}
+type RecommendationProps = Omit<Props, 'liveWeather' | 'loading'> & { live: boolean };
 
-function RecommendationCard({ situation, analysis, live, onRefresh, onNotify }: RecommendationProps) {
+function RecommendationCard({
+    situation, analysis, live, onRefresh, onNotify, record, recordError, onRecorded, managerNote, onReconsider,
+}: RecommendationProps) {
     const [showAlternatives, setShowAlternatives] = useState(false);
+    // The posture the decision form opens with; undefined while the form is closed.
+    const [formPosture, setFormPosture] = useState<Posture>();
+    const [noteOpen, setNoteOpen] = useState(false);
+    const decided = record?.record.status === 'Decided' ? record.record : undefined;
+
+    function openForm(posture: Posture) {
+        setShowAlternatives(false);
+        setNoteOpen(false);
+        setFormPosture(posture);
+    }
 
     if (analysis.status === 'loading') {
         return (
@@ -69,7 +95,7 @@ function RecommendationCard({ situation, analysis, live, onRefresh, onNotify }: 
                 <p className="eyebrow muted">Agent recommendation</p>
                 <p className="rec-pending">
                     <Icon name="refresh" className="spin" />
-                    Analyzing {live ? 'the live weather feeds' : 'this scenario'}…
+                    Analyzing {live ? 'the live weather feeds' : 'this scenario'}{managerNote ? ' with your note' : ''}…
                 </p>
             </section>
         );
@@ -109,6 +135,14 @@ function RecommendationCard({ situation, analysis, live, onRefresh, onNotify }: 
 
             <p className="rec-explanation">{summary}</p>
 
+            {managerNote && (
+                <p className="banner tone-info">
+                    <Icon name="users" />
+                    <span className="grow">Reconsidered with your note: “{managerNote}”</span>
+                    {!decided && <button className="btn btn-small" onClick={() => onReconsider(undefined)}>Remove note</button>}
+                </p>
+            )}
+
             {!live && (
                 <>
                     <p className="small">
@@ -137,17 +171,52 @@ function RecommendationCard({ situation, analysis, live, onRefresh, onNotify }: 
                 </>
             )}
 
-            <div className="rec-actions">
-                <button className="btn btn-primary" onClick={() => onNotify(recommended)}>
-                    <Icon name="send" size={18} />
-                    Review and notify
-                </button>
-                <button className="btn-link" onClick={() => setShowAlternatives(open => !open)} aria-expanded={showAlternatives}>
-                    {showAlternatives ? 'Hide other postures' : 'Review other postures'}
-                </button>
-            </div>
+            {decided ? (
+                <div className="rec-actions">
+                    <p className="banner tone-ok grow">
+                        <Icon name="check" />
+                        {decided.action === 'Overridden' ? 'Overridden' : 'Accepted'}: {POSTURES[decided.finalPosture!].label}.
+                        Recorded as {decided.id}.
+                    </p>
+                    <button className="btn btn-primary" onClick={() => onNotify(decided.finalPosture!)}>
+                        <Icon name="send" size={18} />
+                        Continue to notifications
+                    </button>
+                </div>
+            ) : formPosture ? (
+                <DecisionForm
+                    key={formPosture}
+                    recommended={recommended}
+                    confidence={confidence}
+                    initialPosture={formPosture}
+                    record={record}
+                    recordError={recordError}
+                    onRecorded={onRecorded}
+                    onNotify={onNotify}
+                    onCancel={() => setFormPosture(undefined)}
+                />
+            ) : noteOpen ? (
+                <AgentNoteForm
+                    initialNote={managerNote}
+                    onSubmit={note => { setNoteOpen(false); onReconsider(note); }}
+                    onCancel={() => setNoteOpen(false)}
+                />
+            ) : (
+                <div className="rec-actions">
+                    <button className="btn btn-primary" onClick={() => openForm(recommended)}>
+                        <Icon name="send" size={18} />
+                        Record and notify
+                    </button>
+                    <button className="btn-link" onClick={() => setShowAlternatives(open => !open)} aria-expanded={showAlternatives}>
+                        {showAlternatives ? 'Hide other postures' : 'Review other postures'}
+                    </button>
+                    <button className="btn-link" onClick={() => { setShowAlternatives(false); setNoteOpen(true); }}>
+                        {managerNote ? 'Change note for the agent' : 'Tell the agent something'}
+                    </button>
+                </div>
+            )}
 
-            {showAlternatives && (
+            {showAlternatives && !decided && !formPosture && !noteOpen && (
                 <ul className="alternatives">
                     {POSTURE_ORDER.filter(id => id !== recommended).map(id => (
                         <li key={id}>
@@ -158,7 +227,7 @@ function RecommendationCard({ situation, analysis, live, onRefresh, onNotify }: 
                                         || 'Not what the agent recommended. Choosing it is recorded as a manager override.'}
                                 </span>
                             </div>
-                            <button className="btn btn-small" onClick={() => onNotify(id)}>
+                            <button className="btn btn-small" onClick={() => openForm(id)}>
                                 Use instead
                             </button>
                         </li>
@@ -166,6 +235,140 @@ function RecommendationCard({ situation, analysis, live, onRefresh, onNotify }: 
                 </ul>
             )}
         </section>
+    );
+}
+
+interface DecisionFormProps extends Pick<Props, 'record' | 'recordError' | 'onRecorded' | 'onNotify'> {
+    recommended: Posture;
+    confidence: number;
+    initialPosture: Posture;
+    onCancel: () => void;
+}
+
+// Writes the human decision to the log (POST /api/decisions with the record id), then opens notifications.
+// Choosing anything but the agent's recommendation is an override and needs a rationale.
+function DecisionForm({
+    recommended, confidence, initialPosture, record, recordError, onRecorded, onNotify, onCancel,
+}: DecisionFormProps) {
+    const [posture, setPosture] = useState(initialPosture);
+    const [rationale, setRationale] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string>();
+
+    const overriding = posture !== recommended;
+    const missingRationale = overriding && !rationale.trim();
+
+    async function submit(event: FormEvent) {
+        event.preventDefault();
+        if (!record || missingRationale) return;
+        setSaving(true);
+        setError(undefined);
+        try {
+            const detail = await recordDecision(record.record.id, posture, rationale.trim() || undefined);
+            onRecorded(detail);
+            onNotify(posture);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'The decision could not be recorded.');
+            setSaving(false);
+        }
+    }
+
+    return (
+        <form className="decision-form" onSubmit={submit}>
+            <h2>Record the decision</h2>
+            <p className="small">
+                The agent recommends {POSTURES[recommended].label.toLowerCase()} at {confidence}% confidence. Your decision is
+                written to the decision log{record ? ` as ${record.record.id}` : ''} and cannot be changed afterwards.
+                Notifications are prepared next.
+            </p>
+
+            <label className="field">
+                <span className="eyebrow muted">Operating posture</span>
+                <select value={posture} onChange={e => setPosture(e.target.value as Posture)} disabled={saving}>
+                    {POSTURE_ORDER.map(id => (
+                        <option key={id} value={id}>{POSTURES[id].label}{id === recommended ? ' (agent recommendation)' : ''}</option>
+                    ))}
+                </select>
+            </label>
+
+            {overriding && (
+                <p className="banner tone-warn">
+                    <Icon name="alert" />
+                    This overrides the agent's recommendation ({POSTURES[recommended].label}). A rationale is required.
+                </p>
+            )}
+
+            <label className="stacked">
+                <span className="eyebrow muted">Rationale{overriding ? '' : ' (optional)'}</span>
+                <textarea
+                    value={rationale}
+                    onChange={e => setRationale(e.target.value)}
+                    placeholder={overriding
+                        ? "Why is the agent's recommendation being changed?"
+                        : 'Anything the after-action review should know.'}
+                    rows={3}
+                    required={overriding}
+                    disabled={saving}
+                />
+            </label>
+
+            {!record && (
+                <p className={recordError ? 'error-text' : 'small muted'}>
+                    {recordError ? `The decision log is unavailable: ${recordError}` : 'Opening the decision record…'}
+                </p>
+            )}
+            {error && <p className="error-text">{error}</p>}
+
+            <div className="rec-actions">
+                <button type="submit" className="btn btn-primary" disabled={saving || !record || missingRationale}>
+                    <Icon name="check" size={18} />
+                    {saving ? 'Recording…' : 'Record and notify'}
+                </button>
+                <button type="button" className="btn-link" onClick={onCancel} disabled={saving}>Cancel</button>
+            </div>
+        </form>
+    );
+}
+
+// Local context the feeds cannot see. The agent analyzes again with it and may change its recommendation.
+function AgentNoteForm({ initialNote, onSubmit, onCancel }: {
+    initialNote?: string;
+    onSubmit: (note: string) => void;
+    onCancel: () => void;
+}) {
+    const [note, setNote] = useState(initialNote ?? '');
+
+    function submit(event: FormEvent) {
+        event.preventDefault();
+        if (note.trim()) onSubmit(note.trim());
+    }
+
+    return (
+        <form className="decision-form" onSubmit={submit}>
+            <h2>Tell the agent something</h2>
+            <p className="small">
+                Add what the weather feeds cannot see, such as a power outage, an unplowed parking garage, or a transit
+                suspension. The agent analyzes again with it, and the note is kept in the decision record.
+            </p>
+            <label className="stacked">
+                <span className="eyebrow muted">Note for the agent</span>
+                <textarea
+                    value={note}
+                    onChange={e => setNote(e.target.value)}
+                    placeholder="e.g. Building management reports the parking garage ramp is iced over."
+                    rows={3}
+                    maxLength={500}
+                    required
+                />
+            </label>
+            <div className="rec-actions">
+                <button type="submit" className="btn btn-primary" disabled={!note.trim()}>
+                    <Icon name="refresh" size={18} />
+                    Ask the agent to reconsider
+                </button>
+                <button type="button" className="btn-link" onClick={onCancel}>Cancel</button>
+            </div>
+        </form>
     );
 }
 

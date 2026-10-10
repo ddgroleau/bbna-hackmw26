@@ -222,8 +222,12 @@ const analysesInFlight = new Map<string, Promise<Analysis>>();
 
 // Each analysis is a paid model call, so identical requests made while one is still running
 // (React's development double-render, a double click) share that one request.
-export function fetchAnalysis(scenario?: string): Promise<Analysis> {
-    const query = scenario ? `?scenario=${encodeURIComponent(scenario)}` : '';
+// A manager note is something the feeds cannot see (a power outage, a closed garage); the agent weighs it.
+export function fetchAnalysis(scenario?: string, managerNote?: string): Promise<Analysis> {
+    const params = new URLSearchParams();
+    if (scenario) params.set('scenario', scenario);
+    if (managerNote) params.set('data', managerNote);
+    const query = params.size ? `?${params}` : '';
     let request = analysesInFlight.get(query);
     if (!request) {
         request = requestAnalysis(query).finally(() => analysesInFlight.delete(query));
@@ -330,9 +334,11 @@ export interface RecordEvidence {
     // True when the agent analyzed the live feeds rather than the situation's mock scenario.
     live: boolean;
     liveWeather?: LiveWeather;
+    // What the manager told the agent, when the recommendation was reconsidered with a note.
+    managerNote?: string;
 }
 
-async function createDecisionRecord({ situation, analysis, live, liveWeather }: RecordEvidence): Promise<DecisionRecordDetail> {
+async function createDecisionRecord({ situation, analysis, live, liveWeather, managerNote }: RecordEvidence): Promise<DecisionRecordDetail> {
     const { weather, thresholds } = situation;
     const alerts = weather.alerts.length;
     const response = await fetch('/api/decisions', {
@@ -343,15 +349,17 @@ async function createDecisionRecord({ situation, analysis, live, liveWeather }: 
             reason: `${analysis.confidence}% confidence. ${analysis.summary}`,
             rulesetVersion: thresholds.rulesetVersion,
             evidence: {
-                summary: live
+                summary: (live
                     ? `Latest NWS station reading, active alerts${liveWeather?.forecast ? ', and workday forecast' : ''} retained from the live feeds.`
-                    : `${alerts} active NWS ${alerts === 1 ? 'alert' : 'alerts'}, ${weather.forecast.length} forecast periods, and 1 road report retained from the mock scenario.`,
+                    : `${alerts} active NWS ${alerts === 1 ? 'alert' : 'alerts'}, ${weather.forecast.length} forecast periods, and 1 road report retained from the mock scenario.`)
+                    + (managerNote ? ` The agent also weighed a manager note: "${managerNote}"` : ''),
                 sources: {
                     source: live ? 'live' : situation.scenario,
                     capturedAt: situation.generatedAt,
                     // The situation's weather is mock data, so it is only evidence for a scenario run.
                     weather: live ? liveWeather ?? null : weather,
                     recommendation: analysis,
+                    managerNote: managerNote ?? null,
                 },
             },
         }),
@@ -374,14 +382,16 @@ const pendingRecords = new Map<string, Promise<DecisionRecordDetail>>();
 export function ensureDecisionRecord(evidence: RecordEvidence): Promise<DecisionRecordDetail> {
     const { posture } = evidence.analysis;
     const { rulesetVersion } = evidence.situation.thresholds;
-    const key = `${posture}:${rulesetVersion}`;
+    const note = evidence.managerNote ?? '';
+    const key = `${posture}:${rulesetVersion}:${note}`;
 
     // React runs effects twice in development; share the request so only one record is created.
     let pending = pendingRecords.get(key);
     if (!pending) {
         pending = (async () => {
             const [latest] = await fetchDecisionLog();
-            if (latest?.record.status === 'AwaitingDecision' && latest.record.recommendedPosture === posture
+            // A recommendation reconsidered with a manager note always gets its own record, so the note is logged.
+            if (!note && latest?.record.status === 'AwaitingDecision' && latest.record.recommendedPosture === posture
                 && latest.record.rulesetVersion === rulesetVersion) {
                 return latest;
             }
