@@ -4,6 +4,8 @@ namespace bbna_hackmw26.Server.Weather
     {
         public const string SectionName = "Building";
 
+        // Short code used as the prefix of decision record IDs, e.g. KC-2026-1010-0001.
+        public string Code { get; set; } = "";
         public string Name { get; set; } = "";
         public string Address { get; set; } = "";
         public double Latitude { get; set; }
