@@ -40,13 +40,15 @@ function App() {
     const [liveWeather, setLiveWeather] = useState<{ data?: LiveWeather; error?: string }>({});
     const [record, setRecord] = useState<DecisionRecordDetail>();
     const [recordError, setRecordError] = useState<string>();
+    // Local context the manager gave the agent; the analysis and the record are redone with it.
+    const [managerNote, setManagerNote] = useState<string>();
     // The recommendation the current record was opened for. Refreshing evidence that leads to the
     // same recommendation keeps the record; a new recommendation opens a new one.
     const recordFor = useRef<string>(undefined);
 
     useEffect(() => {
         let cancelled = false;
-        fetchAnalysis(scenario)
+        fetchAnalysis(scenario, managerNote)
             .then(data => {
                 if (!cancelled) setAnalysis({ status: 'ready', data });
             })
@@ -54,7 +56,7 @@ function App() {
                 if (!cancelled) setAnalysis({ status: 'error', message: e.message });
             });
         return () => { cancelled = true; };
-    }, [scenario, reloads]);
+    }, [scenario, reloads, managerNote]);
 
     // Only the live source shows the live reading; a scenario brings its own weather.
     useEffect(() => {
@@ -95,10 +97,10 @@ function App() {
         // A scenario's analysis can arrive before that scenario's situation has replaced the previous one.
         if (scenario && situation.scenario !== scenario) return;
 
-        const key = `${source}:${analysis.data.posture}:${situation.thresholds.rulesetVersion}`;
+        const key = `${source}:${analysis.data.posture}:${situation.thresholds.rulesetVersion}:${managerNote ?? ''}`;
         if (recordFor.current === key) return;
         recordFor.current = key;
-        ensureDecisionRecord({ situation, analysis: analysis.data, live: !scenario, liveWeather: liveReading })
+        ensureDecisionRecord({ situation, analysis: analysis.data, live: !scenario, liveWeather: liveReading, managerNote })
             .then(detail => {
                 if (recordFor.current !== key) return;
                 setRecord(detail);
@@ -109,7 +111,7 @@ function App() {
                 recordFor.current = undefined; // let the next refresh try again
                 setRecordError(e.message);
             });
-    }, [situation, analysis, source, scenario, liveReading]);
+    }, [situation, analysis, source, scenario, liveReading, managerNote]);
 
     function refresh() {
         setLoading(true);
@@ -125,6 +127,17 @@ function App() {
         setDraftPosture(undefined);
         setEdits({});
         setDecision(undefined);
+        setRecord(undefined);
+        setRecordError(undefined);
+        setManagerNote(undefined);
+    }
+
+    // Asks the agent to recommend again with the manager's note, or without one when it is cleared.
+    // The current record was opened for the old recommendation, so a new one is opened for the answer.
+    function reconsider(note: string | undefined) {
+        setAnalysis({ status: 'loading' });
+        setManagerNote(note);
+        setDraftPosture(undefined);
         setRecord(undefined);
         setRecordError(undefined);
     }
@@ -201,6 +214,11 @@ function App() {
                             loading={loading}
                             onRefresh={refresh}
                             onNotify={openNotifications}
+                            record={record}
+                            recordError={recordError}
+                            onRecorded={setRecord}
+                            managerNote={managerNote}
+                            onReconsider={reconsider}
                         />
                     )}
                     {tab === 'notifications' && (
@@ -214,8 +232,7 @@ function App() {
                             decision={decision}
                             onSent={setDecision}
                             record={record}
-                            recordError={recordError}
-                            onRecorded={setRecord}
+                            onRecordDecision={() => selectTab('situation')}
                         />
                     )}
                     {tab === 'record' && <DecisionRecordPage current={record} />}

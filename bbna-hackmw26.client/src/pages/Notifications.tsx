@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { recordDecision, sendNotification } from '../api';
+import { sendNotification } from '../api';
 import type { Analysis, Audience, Decision, DecisionRecordDetail, Posture, Situation } from '../api';
 import { Icon, PageHead } from '../components';
 import { AUDIENCES, AUDIENCE_ORDER, POSTURES, POSTURE_ORDER, formatCount, formatTime } from '../format';
@@ -17,18 +17,17 @@ interface Props {
     decision?: Decision;
     onSent: (decision: Decision) => void;
     record?: DecisionRecordDetail;
-    recordError?: string;
-    onRecorded: (record: DecisionRecordDetail) => void;
+    // Returns to the Situation page, where the decision is recorded.
+    onRecordDecision: () => void;
 }
 
 export function NotificationsPage({
-    situation, analysis, posture, onPostureChange, edits, onEdit, decision, onSent, record, recordError, onRecorded,
+    situation, analysis, posture, onPostureChange, edits, onEdit, decision, onSent, record, onRecordDecision,
 }: Props) {
     const [selected, setSelected] = useState<Audience | 'agent'>('agent');
     const [channels, setChannels] = useState(CHANNELS);
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string>();
-    const [rationale, setRationale] = useState('');
 
     const { people, facility, decisionWindow } = situation;
     const recipients = people.staff.recipients;
@@ -42,10 +41,7 @@ export function NotificationsPage({
         ?? (audience === 'agent'
             ? agentDraft!
             : situation.messageTemplates[posture][audience].replaceAll('{day}', decisionWindow.operatingDayLabel));
-    // An override is measured against the recommendation the record was opened for, which is the agent's.
-    const recommendedPosture = record?.record.recommendedPosture ?? analysis?.posture;
-    const overriding = recommendedPosture !== undefined && posture !== recommendedPosture;
-    // Once the decision is in the log it cannot change, even if the release itself has to be retried.
+    // Only a decision that is already in the log can be released, and it cannot change afterwards.
     const decided = record?.record.status === 'Decided';
     const locked = !!decision || decided;
 
@@ -53,15 +49,11 @@ export function NotificationsPage({
         setChannels(current => current.includes(channel) ? current.filter(c => c !== channel) : [...current, channel]);
     }
 
-    // The decision goes into the log before anything is released, so every release has a record behind it.
     async function send() {
-        if (!record) return;
+        if (!decided) return;
         setSending(true);
         setError(undefined);
         try {
-            if (!decided) {
-                onRecorded(await recordDecision(record.record.id, posture, overriding ? rationale.trim() : undefined));
-            }
             onSent(await sendNotification({ posture, channels, recipients, essentialRecipients: essentialCount }));
         } catch (e) {
             setError(e instanceof Error ? e.message : 'The notification request failed.');
@@ -90,22 +82,17 @@ export function NotificationsPage({
                             <span className={`chip ${decision ? 'chip-ok' : 'chip-warn'}`}>{decision ? 'Sent' : 'Draft'}</span>
                         </div>
 
-                        {recommendedPosture && overriding && (
-                            <>
-                                <p className="banner tone-warn">
-                                    <Icon name="alert" />
-                                    This differs from the agent's recommendation ({POSTURES[recommendedPosture].label}). The change will be recorded.
-                                </p>
-                                <textarea
-                                    className="rationale"
-                                    aria-label="Reason for changing the recommendation"
-                                    placeholder="Required: why are you changing the recommended posture?"
-                                    value={rationale}
-                                    onChange={e => setRationale(e.target.value)}
-                                    readOnly={locked}
-                                    rows={3}
-                                />
-                            </>
+                        {!decided && !decision ? (
+                            <p className="banner tone-warn">
+                                <Icon name="alert" />
+                                <span className="grow">No decision has been recorded yet. Record it before releasing notifications; this page is a preview until then.</span>
+                                <button className="btn btn-small" onClick={onRecordDecision}>Record decision</button>
+                            </p>
+                        ) : record?.record.action === 'Overridden' && (
+                            <p className="banner tone-warn">
+                                <Icon name="alert" />
+                                Recorded as an override of the agent's recommendation ({POSTURES[record.record.recommendedPosture].label}).
+                            </p>
                         )}
 
                         <div className="segmented" role="tablist" aria-label="Audience">
@@ -154,22 +141,13 @@ export function NotificationsPage({
                             <button
                                 className="btn btn-primary btn-wide"
                                 onClick={send}
-                                disabled={sending || !record || channels.length === 0 || (overriding && !decided && !rationale.trim())}
+                                disabled={sending || !decided || channels.length === 0}
                             >
                                 <Icon name="send" />
                                 {sending ? 'Sending…' : `Approve and send to ${formatCount(recipients)} employees`}
                             </button>
                         )}
                         {error && <p className="error-text">{error}</p>}
-                        {!decision && !record && (
-                            <p className={recordError ? 'error-text' : 'small muted card-foot'}>
-                                {recordError
-                                    ? `The decision log is unavailable, so nothing can be released: ${recordError}`
-                                    : analysis
-                                        ? 'Opening the decision record…'
-                                        : 'A decision record opens once the agent has made its recommendation.'}
-                            </p>
-                        )}
                     </section>
 
                     <section className="card">
