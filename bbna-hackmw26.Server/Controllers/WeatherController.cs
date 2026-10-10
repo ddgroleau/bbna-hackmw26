@@ -106,6 +106,62 @@ namespace bbna_hackmw26.Server.Controllers
         }
 
         /// <summary>
+        /// GET /api/weather/forecast
+        /// Returns the expected weather for each upcoming workday (Mon-Fri, about a week ahead),
+        /// split into Overnight / MorningCommute / OfficeHours / EveningCommute windows plus a
+        /// WholeDay total: snow and ice in inches, lowest wind chill and highest heat index in °F,
+        /// strongest gust in mph, and highest chance of precipitation.
+        /// Window times come from the "Workday" section of appsettings.json.
+        /// See <see cref="WorkdayForecastResponse"/> for every field.
+        /// </summary>
+        /// <response code="200">The workday forecast.</response>
+        /// <response code="502">The National Weather Service could not be reached or returned an error.</response>
+        [HttpGet("forecast", Name = "GetWorkdayForecast")]
+        [ProducesResponseType<WorkdayForecastResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway)]
+        public async Task<IActionResult> GetForecast([FromServices] IOptions<WorkdayOptions> workday, CancellationToken ct)
+        {
+            try
+            {
+                var raw = await weather.GetForecastGridAsync(ct);
+                return Ok(WorkdayForecastBuilder.Build(raw, building.Value, workday.Value, DateTimeOffset.UtcNow));
+            }
+            catch (HttpRequestException ex)
+            {
+                return NwsUnavailable(ex);
+            }
+        }
+
+        /// <summary>
+        /// GET /api/weather/storm-outlook
+        /// Returns NOAA Storm Prediction Center's severe thunderstorm risk at the building for
+        /// today (Day 1), tomorrow (Day 2) and the day after (Day 3), on SPC's 0-5 scale
+        /// (Marginal, Slight, Enhanced, Moderate, High). Gives advance notice of tornado and
+        /// severe storm days, before any NWS watch or warning is issued.
+        /// See <see cref="StormOutlookResponse"/> and <see cref="StormOutlookDay"/> for every field.
+        /// </summary>
+        /// <response code="200">The Day 1-3 outlook at the building.</response>
+        /// <response code="502">The Storm Prediction Center could not be reached or returned an error.</response>
+        [HttpGet("storm-outlook", Name = "GetStormOutlook")]
+        [ProducesResponseType<StormOutlookResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway)]
+        public async Task<IActionResult> GetStormOutlook([FromServices] SpcOutlookService spc, CancellationToken ct)
+        {
+            try
+            {
+                var outlooks = await spc.GetOutlooksAsync(ct);
+                return Ok(StormOutlookBuilder.Build(outlooks, building.Value));
+            }
+            catch (HttpRequestException ex)
+            {
+                return Problem(
+                    title: "Storm outlook unavailable",
+                    detail: $"spc.noaa.gov request failed: {ex.Message}",
+                    statusCode: StatusCodes.Status502BadGateway);
+            }
+        }
+
+        /// <summary>
         /// The error response used when NWS is down or returns an error: 502 Bad Gateway
         /// (an upstream service failed, not our server) with a standard error body.
         /// </summary>

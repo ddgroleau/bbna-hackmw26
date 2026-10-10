@@ -19,10 +19,10 @@ namespace bbna_hackmw26.Server.Audit
                 facility_code         TEXT NOT NULL,
                 facility_name         TEXT NOT NULL,
                 status                TEXT NOT NULL CHECK (status IN ('AwaitingDecision', 'Decided')),
-                recommended_status    TEXT NOT NULL CHECK (recommended_status IN ('Open', 'Closed')),
+                recommended_posture   TEXT NOT NULL CHECK (recommended_posture IN ('Normal', 'Delay', 'EarlyDismissal', 'Telework', 'Closure')),
                 recommendation_reason TEXT NOT NULL,
                 ruleset_version       TEXT NOT NULL,
-                final_status          TEXT CHECK (final_status IN ('Open', 'Closed')),
+                final_posture         TEXT CHECK (final_posture IN ('Normal', 'Delay', 'EarlyDismissal', 'Telework', 'Closure')),
                 action                TEXT CHECK (action IN ('Accepted', 'Overridden')),
                 decided_by            TEXT,
                 decided_at            TEXT,
@@ -57,11 +57,16 @@ namespace bbna_hackmw26.Server.Audit
             CREATE TRIGGER IF NOT EXISTS decision_records_final BEFORE UPDATE ON decision_records
             WHEN OLD.status = 'Decided'
             BEGIN SELECT RAISE(ABORT, 'decided records are immutable'); END;
+
+            PRAGMA user_version = 2;
             """;
 
+        // Version 1 stored Open/Closed instead of the operating posture. Bumped whenever the schema changes shape.
+        private const int SchemaVersion = 2;
+
         private const string RecordColumns = """
-            id, facility_code, facility_name, status, recommended_status, recommendation_reason,
-            ruleset_version, final_status, action, decided_by, decided_at, created_at
+            id, facility_code, facility_name, status, recommended_posture, recommendation_reason,
+            ruleset_version, final_posture, action, decided_by, decided_at, created_at
             """;
 
         private readonly string _connectionString;
@@ -81,6 +86,18 @@ namespace bbna_hackmw26.Server.Audit
         {
             using var conn = Open();
             using var cmd = conn.CreateCommand();
+
+            // The log is append-only, so an older schema is never migrated or dropped automatically.
+            cmd.CommandText = "SELECT (SELECT user_version FROM pragma_user_version), (SELECT COUNT(*) FROM sqlite_master WHERE name = 'decision_records')";
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                if (reader.GetInt64(1) > 0 && reader.GetInt64(0) != SchemaVersion)
+                    throw new InvalidOperationException(
+                        $"The audit database at {conn.DataSource} uses schema version {reader.GetInt64(0)}, but version {SchemaVersion} is required. " +
+                        "Move or delete it (and its -wal/-shm files) to start a new log.");
+            }
+
             cmd.CommandText = Schema;
             cmd.ExecuteNonQuery();
         }
@@ -101,7 +118,7 @@ namespace bbna_hackmw26.Server.Audit
                 VALUES ($id, $code, $name, 'AwaitingDecision', $rec, $reason, $ruleset, NULL, NULL, NULL, NULL, $now)
                 """, ct,
                 ("$id", id), ("$code", facilityCode), ("$name", facilityName),
-                ("$rec", request.RecommendedStatus.ToString()), ("$reason", request.Reason),
+                ("$rec", request.RecommendedPosture.ToString()), ("$reason", request.Reason),
                 ("$ruleset", request.RulesetVersion), ("$now", Format(now)));
 
             var prev = await AppendEventAsync(conn, id, null, now, AuditEventKind.EvidenceCaptured, "system",
@@ -110,8 +127,8 @@ namespace bbna_hackmw26.Server.Audit
 
             await AppendEventAsync(conn, id, prev, now, AuditEventKind.RecommendationGenerated, "rules-engine",
                 "Rules engine generated recommendation",
-                $"Recommended {request.RecommendedStatus} under ruleset {request.RulesetVersion}. {request.Reason}",
-                JsonSerializer.Serialize(new { recommendedStatus = request.RecommendedStatus.ToString(), rulesetVersion = request.RulesetVersion }),
+                $"Recommended {request.RecommendedPosture.Label().ToLowerInvariant()} under ruleset {request.RulesetVersion}. {request.Reason}",
+                JsonSerializer.Serialize(new { recommendedPosture = request.RecommendedPosture.ToString(), rulesetVersion = request.RulesetVersion }),
                 ct);
 
             await tx.CommitAsync(ct);
@@ -133,18 +150,18 @@ namespace bbna_hackmw26.Server.Audit
             var record = await ReadRecordAsync(conn, id, ct);
             if (record is null || record.Status != DecisionStatus.AwaitingDecision) return false;
 
-            var action = request.FinalStatus == record.RecommendedStatus ? DecisionAction.Accepted : DecisionAction.Overridden;
+            var action = request.FinalPosture == record.RecommendedPosture ? DecisionAction.Accepted : DecisionAction.Overridden;
             var detail = action == DecisionAction.Accepted
-                ? $"{CurrentUser} accepted the recommendation. Facility {request.FinalStatus}."
-                : $"{CurrentUser} overrode the recommendation ({record.RecommendedStatus} → {request.FinalStatus}).";
+                ? $"{CurrentUser} accepted the recommendation: {request.FinalPosture.Label().ToLowerInvariant()}."
+                : $"{CurrentUser} overrode the recommendation ({record.RecommendedPosture.Label()} → {request.FinalPosture.Label()}).";
             if (!string.IsNullOrWhiteSpace(request.Rationale)) detail += $" Rationale: {request.Rationale}";
 
             await ExecuteAsync(conn, """
                 UPDATE decision_records
-                SET status = 'Decided', final_status = $final, action = $action, decided_by = $by, decided_at = $now
+                SET status = 'Decided', final_posture = $final, action = $action, decided_by = $by, decided_at = $now
                 WHERE id = $id
                 """, ct,
-                ("$id", id), ("$final", request.FinalStatus.ToString()), ("$action", action.ToString()),
+                ("$id", id), ("$final", request.FinalPosture.ToString()), ("$action", action.ToString()),
                 ("$by", CurrentUser), ("$now", Format(now)));
 
             var prev = await ScalarAsync<string>(conn,
@@ -154,7 +171,7 @@ namespace bbna_hackmw26.Server.Audit
                 "Human decision recorded", detail,
                 JsonSerializer.Serialize(new
                 {
-                    finalStatus = request.FinalStatus.ToString(),
+                    finalPosture = request.FinalPosture.ToString(),
                     action = action.ToString(),
                     rationale = request.Rationale,
                     client = new { ipAddress = client.IpAddress, userAgent = client.UserAgent },
@@ -171,51 +188,67 @@ namespace bbna_hackmw26.Server.Audit
             var record = await ReadRecordAsync(conn, id, ct);
             if (record is null) return null;
 
-            var events = new List<(AuditEvent Event, string RecordId, string OccurredAt, string? RawPayload)>();
-            await using (var cmd = Command(conn, """
-                SELECT seq, occurred_at, kind, actor, title, detail, payload, prev_hash, hash
-                FROM audit_events WHERE record_id = $id ORDER BY seq
-                """, ("$id", id)))
-            await using (var reader = await cmd.ExecuteReaderAsync(ct))
-            {
-                while (await reader.ReadAsync(ct))
-                {
-                    var occurredAt = reader.GetString(1);
-                    var payload = reader.IsDBNull(6) ? null : reader.GetString(6);
-                    events.Add((new AuditEvent(
-                        reader.GetInt64(0),
-                        Parse(occurredAt),
-                        reader.GetString(2),
-                        reader.GetString(3),
-                        reader.GetString(4),
-                        reader.GetString(5),
-                        payload is null ? null : JsonDocument.Parse(payload).RootElement.Clone(),
-                        reader.IsDBNull(7) ? null : reader.GetString(7),
-                        reader.GetString(8)), id, occurredAt, payload));
-                }
-            }
-
-            return new DecisionRecordDetail(record, events.Select(e => e.Event).ToList(), Verify(events));
+            var events = await ReadEventsAsync(conn, id, ct);
+            return Detail(record, events.GetValueOrDefault(id, []));
         }
 
-        public async Task<IReadOnlyList<DecisionRecord>> ListAsync(string? facilityCode, int limit, CancellationToken ct)
+        // Every record with its full event history, newest record first.
+        public async Task<IReadOnlyList<DecisionRecordDetail>> ListAllAsync(CancellationToken ct)
         {
             await using var conn = Open();
-            await using var cmd = Command(conn, $"""
-                SELECT {RecordColumns} FROM decision_records
-                WHERE $code IS NULL OR facility_code = $code
-                ORDER BY created_at DESC LIMIT $limit
-                """, ("$code", facilityCode), ("$limit", limit));
-            await using var reader = await cmd.ExecuteReaderAsync(ct);
-
             var records = new List<DecisionRecord>();
-            while (await reader.ReadAsync(ct)) records.Add(MapRecord(reader));
-            return records;
+            await using (var cmd = Command(conn, $"""
+                SELECT {RecordColumns} FROM decision_records ORDER BY created_at DESC, id DESC
+                """))
+            await using (var reader = await cmd.ExecuteReaderAsync(ct))
+            {
+                while (await reader.ReadAsync(ct)) records.Add(MapRecord(reader));
+            }
+
+            var events = await ReadEventsAsync(conn, null, ct);
+            return records.Select(r => Detail(r, events.GetValueOrDefault(r.Id, []))).ToList();
+        }
+
+        private static DecisionRecordDetail Detail(DecisionRecord record, List<StoredEvent> events)
+            => new(record, events.Select(e => e.Event).ToList(), Verify(events));
+
+        // The raw occurred_at and payload strings are kept alongside each event because the hash covers them exactly.
+        private record StoredEvent(AuditEvent Event, string RecordId, string OccurredAt, string? RawPayload);
+
+        // Events grouped by record in sequence order; a null recordId reads every record's events.
+        private static async Task<Dictionary<string, List<StoredEvent>>> ReadEventsAsync(
+            SqliteConnection conn, string? recordId, CancellationToken ct)
+        {
+            var events = new Dictionary<string, List<StoredEvent>>();
+            await using var cmd = Command(conn, """
+                SELECT seq, occurred_at, kind, actor, title, detail, payload, prev_hash, hash, record_id
+                FROM audit_events WHERE $id IS NULL OR record_id = $id ORDER BY seq
+                """, ("$id", recordId));
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var id = reader.GetString(9);
+                var occurredAt = reader.GetString(1);
+                var payload = reader.IsDBNull(6) ? null : reader.GetString(6);
+                var stored = new StoredEvent(new AuditEvent(
+                    reader.GetInt64(0),
+                    Parse(occurredAt),
+                    reader.GetString(2),
+                    reader.GetString(3),
+                    reader.GetString(4),
+                    reader.GetString(5),
+                    payload is null ? null : JsonDocument.Parse(payload).RootElement.Clone(),
+                    reader.IsDBNull(7) ? null : reader.GetString(7),
+                    reader.GetString(8)), id, occurredAt, payload);
+
+                if (!events.TryGetValue(id, out var list)) events[id] = list = [];
+                list.Add(stored);
+            }
+            return events;
         }
 
         // Re-derives each hash from the stored content and checks it links to the previous event.
-        private static IntegrityResult Verify(
-            List<(AuditEvent Event, string RecordId, string OccurredAt, string? RawPayload)> events)
+        private static IntegrityResult Verify(List<StoredEvent> events)
         {
             string? expectedPrev = null;
             foreach (var (e, recordId, occurredAt, payload) in events)
@@ -274,10 +307,10 @@ namespace bbna_hackmw26.Server.Audit
             r.GetString(1),
             r.GetString(2),
             Enum.Parse<DecisionStatus>(r.GetString(3)),
-            Enum.Parse<FacilityStatus>(r.GetString(4)),
+            Enum.Parse<Posture>(r.GetString(4)),
             r.GetString(5),
             r.GetString(6),
-            r.IsDBNull(7) ? null : Enum.Parse<FacilityStatus>(r.GetString(7)),
+            r.IsDBNull(7) ? null : Enum.Parse<Posture>(r.GetString(7)),
             r.IsDBNull(8) ? null : Enum.Parse<DecisionAction>(r.GetString(8)),
             r.IsDBNull(9) ? null : r.GetString(9),
             r.IsDBNull(10) ? null : Parse(r.GetString(10)),

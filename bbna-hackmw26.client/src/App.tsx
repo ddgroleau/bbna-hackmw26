@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { fetchSituation } from './api';
-import type { Decision, Posture, Situation } from './api';
+import { useEffect, useRef, useState } from 'react';
+import { ensureDecisionRecord, fetchSituation } from './api';
+import type { Decision, DecisionRecordDetail, Posture, Situation } from './api';
 import { Icon } from './components';
 import { POSTURES, formatCount, formatTime, useNow } from './format';
 import { DecisionRecordPage } from './pages/DecisionRecord';
@@ -32,14 +32,37 @@ function App() {
     const [draftPosture, setDraftPosture] = useState<Posture>();
     const [edits, setEdits] = useState<Record<string, string>>({});
     const [decision, setDecision] = useState<Decision>();
+    const [record, setRecord] = useState<DecisionRecordDetail>();
+    const [recordError, setRecordError] = useState<string>();
+    // The recommendation the current record was opened for. Refreshing evidence that leads to the
+    // same recommendation keeps the record; a new recommendation opens a new one.
+    const recordFor = useRef<string>(undefined);
 
     useEffect(() => {
         let cancelled = false;
+
+        function openRecord(data: Situation) {
+            const key = `${data.scenario}:${data.recommendation.posture}:${data.thresholds.rulesetVersion}`;
+            if (recordFor.current === key) return;
+            recordFor.current = key;
+            setRecordError(undefined);
+            ensureDecisionRecord(data)
+                .then(detail => {
+                    if (recordFor.current === key) setRecord(detail);
+                })
+                .catch((e: Error) => {
+                    if (recordFor.current !== key) return;
+                    recordFor.current = undefined; // let the next refresh try again
+                    setRecordError(e.message);
+                });
+        }
+
         fetchSituation(scenario)
             .then(data => {
                 if (cancelled) return;
                 setSituation(data);
                 setError(undefined);
+                openRecord(data);
             })
             .catch((e: Error) => {
                 if (!cancelled) setError(e.message);
@@ -62,6 +85,8 @@ function App() {
         setDraftPosture(undefined);
         setEdits({});
         setDecision(undefined);
+        setRecord(undefined);
+        setRecordError(undefined);
     }
 
     function selectTab(id: Tab) {
@@ -132,15 +157,18 @@ function App() {
                     {tab === 'notifications' && (
                         <NotificationsPage
                             situation={situation}
-                            posture={decision?.posture ?? posture}
+                            posture={decision?.posture ?? record?.record.finalPosture ?? posture}
                             onPostureChange={setDraftPosture}
                             edits={edits}
                             onEdit={(key, message) => setEdits(current => ({ ...current, [key]: message }))}
                             decision={decision}
                             onSent={setDecision}
+                            record={record}
+                            recordError={recordError}
+                            onRecorded={setRecord}
                         />
                     )}
-                    {tab === 'record' && <DecisionRecordPage situation={situation} decision={decision} />}
+                    {tab === 'record' && <DecisionRecordPage current={record} />}
                     {tab === 'thresholds' && <ThresholdsPage situation={situation} />}
                 </main>
             </div>
