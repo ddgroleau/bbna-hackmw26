@@ -169,12 +169,11 @@ function Sidebar({ situation, decision }: { situation: Situation; decision?: Dec
 
             <dl className="facts">
                 <div><dt>Local time</dt><dd>{formatTime(now, zone)} {facility.timeZoneLabel}</dd></div>
-                <div><dt>School hours</dt><dd>{facility.hours.label}</dd></div>
-                <div><dt>Grades</dt><dd>{facility.grades}</dd></div>
-                <div><dt>Students</dt><dd>{formatCount(population.students)}</dd></div>
-                <div><dt>Staff</dt><dd>{formatCount(population.staff)}</dd></div>
-                <div><dt>Essential staff</dt><dd>{formatCount(population.essentialStaff)}</dd></div>
-                <div><dt>Bus riders</dt><dd>{formatCount(population.busRiders)}</dd></div>
+                <div><dt>Operating hours</dt><dd>{facility.hours.label}</dd></div>
+                <div><dt>Employees</dt><dd>{formatCount(population.employees)}</dd></div>
+                <div><dt>Essential personnel</dt><dd>{formatCount(population.essentialPersonnel)}</dd></div>
+                <div><dt>Telework eligible</dt><dd>{formatCount(population.teleworkEligible)}</dd></div>
+                <div><dt>Primary hazards</dt><dd>{facility.hazards.join(', ')}</dd></div>
             </dl>
             <p className="small muted">{facility.dataNote}</p>
 

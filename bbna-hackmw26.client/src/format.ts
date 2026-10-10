@@ -1,17 +1,25 @@
 import { useEffect, useState } from 'react';
-import type { Posture } from './api';
+import type { Audience, Posture } from './api';
 
 export type Tone = 'ok' | 'warn' | 'info' | 'danger';
 
 export const POSTURES: Record<Posture, { label: string; tone: Tone }> = {
     normal: { label: 'Normal operations', tone: 'ok' },
-    delay: { label: 'Delayed start', tone: 'warn' },
-    early_dismissal: { label: 'Early dismissal', tone: 'warn' },
-    telework: { label: 'Remote learning', tone: 'info' },
-    closure: { label: 'Closure', tone: 'danger' },
+    delay: { label: 'Delayed arrival', tone: 'warn' },
+    early_dismissal: { label: 'Early departure', tone: 'warn' },
+    telework: { label: 'Unscheduled telework', tone: 'info' },
+    closure: { label: 'Office closed', tone: 'danger' },
 };
 
 export const POSTURE_ORDER = Object.keys(POSTURES) as Posture[];
+
+export const AUDIENCES: Record<Audience, string> = {
+    teleworkReady: 'Telework-ready',
+    onsite: 'On-site only',
+    essential: 'Essential personnel',
+};
+
+export const AUDIENCE_ORDER = Object.keys(AUDIENCES) as Audience[];
 
 export function useNow(intervalMs = 1000): number {
     const [now, setNow] = useState(() => Date.now());
