@@ -27,6 +27,16 @@ builder.Services.AddHttpClient<NwsWeatherService>((sp, client) =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd(nws.UserAgent);      // NWS requires a User-Agent
     client.DefaultRequestHeaders.Accept.ParseAdd("application/geo+json"); // NWS's standard JSON format
 });
+
+// Storm Prediction Center (SPC) severe storm outlooks: read its settings and register the
+// outlook service with its own HttpClient pointed at the SPC outlook folder.
+builder.Services.Configure<SpcOptions>(builder.Configuration.GetSection(SpcOptions.SectionName));
+builder.Services.AddHttpClient<SpcOutlookService>((sp, client) =>
+{
+    var spc = sp.GetRequiredService<IOptions<SpcOptions>>().Value;
+    client.BaseAddress = new Uri(spc.BaseUrl);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(spc.UserAgent);      // identifies our app to SPC
+});
 builder.Services.Configure<AuditOptions>(builder.Configuration.GetSection(AuditOptions.SectionName));
 builder.Services.AddSingleton<DecisionLogStore>();
 

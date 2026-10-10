@@ -54,6 +54,27 @@ namespace bbna_hackmw26.Server.Weather
     }
 
     /// <summary>
+    /// Settings for NOAA's Storm Prediction Center (SPC) convective outlooks, used by
+    /// GET /api/weather/storm-outlook. Loaded from the "Spc" section of appsettings.json.
+    /// The outlooks are free public map files; no key is needed.
+    /// </summary>
+    public class SpcOptions
+    {
+        // Name of the section in appsettings.json these values are read from.
+        public const string SectionName = "Spc";
+
+        // Folder the outlook files live in. Files are named day1otlk_cat.lyr.geojson, day2..., day3...
+        public string BaseUrl { get; set; } = "https://www.spc.noaa.gov/products/outlook/";
+
+        // Sent with every request so SPC can identify our app (same value as Nws:UserAgent is fine).
+        public string UserAgent { get; set; } = "bbna-hackmw26";
+
+        // How long (in minutes) to reuse the outlooks before downloading them again.
+        // SPC updates them a few times a day, so 15 minutes keeps them fresh.
+        public int CacheMinutes { get; set; } = 15;
+    }
+
+    /// <summary>
     /// The building's working day, used by GET /api/weather/forecast to split each
     /// workday into time windows. Loaded from the "Workday" section of appsettings.json.
     ///

@@ -33,3 +33,9 @@ GET {{bbna_hackmw26.Server_HostAddress}}/api/weather/forecast
 Accept: application/json
 
 ###
+
+# Storm Prediction Center severe storm risk (0-5) at the building for today, tomorrow and the day after
+GET {{bbna_hackmw26.Server_HostAddress}}/api/weather/storm-outlook
+Accept: application/json
+
+###

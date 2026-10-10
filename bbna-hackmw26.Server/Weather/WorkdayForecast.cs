@@ -92,6 +92,9 @@ namespace bbna_hackmw26.Server.Weather
 
         /// <summary>Highest chance of precipitation (rain, snow, etc.) at any point in the window, 0-100.</summary>
         public double? HighestPrecipChancePercent { get; init; }
+
+        /// <summary>Highest chance of thunderstorms at any point in the window, 0-100.</summary>
+        public double? HighestThunderChancePercent { get; init; }
     }
 
     /// <summary>
@@ -132,6 +135,8 @@ namespace bbna_hackmw26.Server.Weather
             var heatIndex = ReadBlocks(p, "heatIndex", "wmoUnit:degC");
             var gusts = ReadBlocks(p, "windGust", "wmoUnit:km_h-1");
             var precipChance = ReadBlocks(p, "probabilityOfPrecipitation", "wmoUnit:percent");
+            // NWS sends thunder chance without a unit label; it's always a 0-100 percentage.
+            var thunderChance = ReadBlocks(p, "probabilityOfThunder", "wmoUnit:percent", allowMissingUnit: true);
 
             // The overall time range the forecast covers, e.g. "2026-10-10T12:00:00+00:00/P7DT13H" (7 days 13 hours).
             var coverage = ParseValidTime(p.GetProperty("validTimes").GetString()!);
@@ -156,6 +161,7 @@ namespace bbna_hackmw26.Server.Weather
                 HighestHeatIndexF = Round(CToF(Highest(heatIndex, start, end))),
                 HighestWindGustMph = Round(KmhToMph(Highest(gusts, start, end))),
                 HighestPrecipChancePercent = Round(Highest(precipChance, start, end), 0),
+                HighestThunderChancePercent = Round(Highest(thunderChance, start, end), 0),
             };
 
             // Walk day by day from today (building time) to the last day the forecast reaches.
@@ -251,15 +257,17 @@ namespace bbna_hackmw26.Server.Weather
         /// <summary>
         /// Reads one measurement's time blocks, e.g. "snowfallAmount": { "uom": "wmoUnit:mm", "values": [...] }.
         /// Returns an empty list if the measurement is missing or isn't in the unit we expect.
+        /// Set allowMissingUnit for measurements NWS sends without a "uom" label (e.g. probabilityOfThunder);
+        /// a label that's present but different is still rejected.
         /// </summary>
-        private static List<Block> ReadBlocks(JsonElement props, string name, string expectedUnit)
+        private static List<Block> ReadBlocks(JsonElement props, string name, string expectedUnit, bool allowMissingUnit = false)
         {
             var blocks = new List<Block>();
             if (!props.TryGetProperty(name, out var series)) return blocks;
 
             // Guard against unit changes: only trust the numbers if they're in the unit we convert from.
             var unit = series.TryGetProperty("uom", out var u) ? u.GetString() : null;
-            if (unit != expectedUnit) return blocks;
+            if (unit != expectedUnit && !(unit is null && allowMissingUnit)) return blocks;
 
             foreach (var item in series.GetProperty("values").EnumerateArray())
             {
