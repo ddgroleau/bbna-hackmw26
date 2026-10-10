@@ -1,17 +1,26 @@
 import { useState } from 'react';
-import type { Posture, Situation } from '../api';
+import type { AnalysisState, LiveWeather, Posture, Situation } from '../api';
 import { Icon, PageHead } from '../components';
-import { AUDIENCES, AUDIENCE_ORDER, POSTURES, formatCount, formatCountdown, formatDateTime, formatTemp, formatTime, useNow } from '../format';
+import { AUDIENCES, AUDIENCE_ORDER, POSTURES, POSTURE_ORDER, formatCount, formatCountdown, formatDateTime, formatTemp, formatTime, useNow } from '../format';
+
+interface LiveWeatherState {
+    data?: LiveWeather;
+    error?: string;
+}
 
 interface Props {
     situation: Situation;
+    analysis: AnalysisState;
+    // Present when the agent is analyzing the live feeds; absent for a mock scenario.
+    liveWeather?: LiveWeatherState;
     loading: boolean;
     onRefresh: () => void;
     onNotify: (posture: Posture) => void;
 }
 
-export function SituationPage({ situation, loading, onRefresh, onNotify }: Props) {
+export function SituationPage({ situation, analysis, liveWeather, loading, onRefresh, onNotify }: Props) {
     const { facility, decisionWindow } = situation;
+    const busy = loading || analysis.status === 'loading';
     return (
         <>
             <PageHead
@@ -19,16 +28,24 @@ export function SituationPage({ situation, loading, onRefresh, onNotify }: Props
                 title="Operating decision"
                 subtitle={`Conditions affecting ${decisionWindow.operatingDayLabel} at ${facility.name}.`}
                 action={
-                    <button className="btn" onClick={onRefresh} disabled={loading}>
-                        <Icon name="refresh" size={18} className={loading ? 'spin' : undefined} />
+                    <button className="btn" onClick={onRefresh} disabled={busy}>
+                        <Icon name="refresh" size={18} className={busy ? 'spin' : undefined} />
                         Refresh data
                     </button>
                 }
             />
             <div className="split">
                 <div className="stack">
-                    <RecommendationCard situation={situation} onNotify={onNotify} />
-                    <WeatherData situation={situation} />
+                    <RecommendationCard
+                        situation={situation}
+                        analysis={analysis}
+                        live={!!liveWeather}
+                        onRefresh={onRefresh}
+                        onNotify={onNotify}
+                    />
+                    {liveWeather
+                        ? <LiveWeatherData situation={situation} liveWeather={liveWeather} />
+                        : <WeatherData situation={situation} />}
                 </div>
                 <div className="stack">
                     <DecisionWindowCard situation={situation} />
@@ -39,55 +56,89 @@ export function SituationPage({ situation, loading, onRefresh, onNotify }: Props
     );
 }
 
-function RecommendationCard({ situation, onNotify }: Pick<Props, 'situation' | 'onNotify'>) {
+interface RecommendationProps extends Pick<Props, 'situation' | 'analysis' | 'onRefresh' | 'onNotify'> {
+    live: boolean;
+}
+
+function RecommendationCard({ situation, analysis, live, onRefresh, onNotify }: RecommendationProps) {
     const [showAlternatives, setShowAlternatives] = useState(false);
-    const rec = situation.recommendation;
-    const posture = POSTURES[rec.posture];
+
+    if (analysis.status === 'loading') {
+        return (
+            <section className="card recommendation tone-info">
+                <p className="eyebrow muted">Agent recommendation</p>
+                <p className="rec-pending">
+                    <Icon name="refresh" className="spin" />
+                    Analyzing {live ? 'the live weather feeds' : 'this scenario'}…
+                </p>
+            </section>
+        );
+    }
+
+    if (analysis.status === 'error') {
+        return (
+            <section className="card recommendation tone-danger">
+                <p className="eyebrow muted">Agent recommendation</p>
+                <p className="banner"><Icon name="alert" />The agent could not produce a recommendation.</p>
+                <p className="small">{analysis.message}</p>
+                <div className="rec-actions">
+                    <button className="btn btn-primary" onClick={onRefresh}>Try again</button>
+                </div>
+            </section>
+        );
+    }
+
+    const { posture: recommended, summary, confidence } = analysis.data;
+    const posture = POSTURES[recommended];
+    // The scenario's canned rules-engine result. It describes the mock weather, so it is only
+    // shown as a cross-check when the agent analyzed that same scenario.
+    const rules = situation.recommendation;
 
     return (
         <section className={`card recommendation tone-${posture.tone}`}>
             <div className="rec-head">
                 <div>
-                    <p className="eyebrow muted">System recommendation</p>
+                    <p className="eyebrow muted">Agent recommendation</p>
                     <p className="rec-posture">{posture.label}</p>
                 </div>
                 <div className="confidence">
-                    <strong>{rec.confidence}%</strong>
+                    <strong>{confidence}%</strong>
                     <span>Confidence</span>
                 </div>
             </div>
 
-            <p className="banner">
-                <Icon name={rec.level === 'none' ? 'check' : 'alert'} />
-                {rec.thresholdSummary}
-            </p>
+            <p className="rec-explanation">{summary}</p>
 
-            <p className="rec-explanation">{rec.explanation}</p>
-
-            <table className="triggers">
-                <thead>
-                    <tr><th>Rule checked</th><th>Observed</th><th>Threshold</th><th>Result</th></tr>
-                </thead>
-                <tbody>
-                    {rec.triggers.map(trigger => (
-                        <tr key={trigger.rule}>
-                            <td>{trigger.rule}</td>
-                            <td>{trigger.observed}</td>
-                            <td>{trigger.threshold}</td>
-                            <td>
-                                <span className={`chip ${trigger.crossed ? 'chip-tone' : ''}`}>
-                                    {trigger.crossed ? 'Crossed' : 'Not crossed'}
-                                </span>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-
-            <p className="small"><strong>What could change this:</strong> {rec.whatCouldChange}</p>
+            {!live && (
+                <>
+                    <p className="small">
+                        <strong>Rules engine cross-check:</strong> {POSTURES[rules.posture].label} at {rules.confidence}% confidence.
+                        {rules.posture === recommended ? ' It agrees with the agent.' : ' It differs from the agent.'}
+                    </p>
+                    <table className="triggers">
+                        <thead>
+                            <tr><th>Rule checked</th><th>Observed</th><th>Threshold</th><th>Result</th></tr>
+                        </thead>
+                        <tbody>
+                            {rules.triggers.map(trigger => (
+                                <tr key={trigger.rule}>
+                                    <td>{trigger.rule}</td>
+                                    <td>{trigger.observed}</td>
+                                    <td>{trigger.threshold}</td>
+                                    <td>
+                                        <span className={`chip ${trigger.crossed ? 'chip-tone' : ''}`}>
+                                            {trigger.crossed ? 'Crossed' : 'Not crossed'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </>
+            )}
 
             <div className="rec-actions">
-                <button className="btn btn-primary" onClick={() => onNotify(rec.posture)}>
+                <button className="btn btn-primary" onClick={() => onNotify(recommended)}>
                     <Icon name="send" size={18} />
                     Review and notify
                 </button>
@@ -98,13 +149,16 @@ function RecommendationCard({ situation, onNotify }: Pick<Props, 'situation' | '
 
             {showAlternatives && (
                 <ul className="alternatives">
-                    {rec.alternatives.map(alternative => (
-                        <li key={alternative.posture}>
+                    {POSTURE_ORDER.filter(id => id !== recommended).map(id => (
+                        <li key={id}>
                             <div>
-                                <strong>{POSTURES[alternative.posture].label}</strong>
-                                <span>{alternative.note}</span>
+                                <strong>{POSTURES[id].label}</strong>
+                                <span>
+                                    {(!live && rules.alternatives.find(alternative => alternative.posture === id)?.note)
+                                        || 'Not what the agent recommended. Choosing it is recorded as a manager override.'}
+                                </span>
                             </div>
-                            <button className="btn btn-small" onClick={() => onNotify(alternative.posture)}>
+                            <button className="btn btn-small" onClick={() => onNotify(id)}>
                                 Use instead
                             </button>
                         </li>
@@ -303,6 +357,90 @@ function WeatherData({ situation }: { situation: Situation }) {
                     <p className="small">{weather.roads.detail}</p>
                 </div>
             </article>
+        </section>
+    );
+}
+
+function withUnit(value: number | null, unit: string): string {
+    return value === null ? '—' : `${value} ${unit}`;
+}
+
+function LiveWeatherData({ situation, liveWeather }: { situation: Situation; liveWeather: LiveWeatherState }) {
+    const zone = situation.facility.timeZone;
+    const { data, error } = liveWeather;
+
+    return (
+        <section className="stack">
+            <div className="section-head">
+                <div>
+                    <h2>Weather data</h2>
+                    <p className="small">Live National Weather Service feeds the agent analyzed.</p>
+                </div>
+                {data && <span className="small">{data.current.stationName}</span>}
+            </div>
+
+            {error && <p className="banner tone-danger"><Icon name="alert" />{error}</p>}
+            {!data && !error && <p className="small muted">Loading live weather…</p>}
+
+            {data && (
+                <>
+                    <article className="card evidence">
+                        <span className="tile-icon"><Icon name="alert" /></span>
+                        <div>
+                            <p className="source">National Weather Service alerts</p>
+                            {data.alerts.length === 0 && (
+                                <>
+                                    <h3>No active alerts</h3>
+                                    <p className="small">No watches, warnings, or advisories at the facility.</p>
+                                </>
+                            )}
+                            {data.alerts.map(alert => {
+                                const until = alert.ends ?? alert.expires;
+                                return (
+                                    <div key={alert.id} className="alert-item">
+                                        <h3>
+                                            {alert.event}
+                                            {until && <span className="chip">Until {formatDateTime(until, zone)}</span>}
+                                        </h3>
+                                        {alert.headline && <p className="small">{alert.headline}</p>}
+                                        <p className="small muted">
+                                            Severity {alert.severity} · Certainty {alert.certainty} · Urgency {alert.urgency}
+                                            {alert.areaDescription && ` · ${alert.areaDescription}`}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </article>
+
+                    <article className="card evidence">
+                        <span className="tile-icon"><Icon name="cloud" /></span>
+                        <div>
+                            <p className="source">Current conditions <time>{formatDateTime(data.current.observedAt, zone)}</time></p>
+                            <h3>{formatTemp(data.current.temperatureF)} · {data.current.conditions ?? 'Conditions not reported'}</h3>
+                            <dl className="stats">
+                                <div><dt>Feels like</dt><dd>{formatTemp(data.current.feelsLikeF)}</dd></div>
+                                <div><dt>Wind</dt><dd>{data.current.windDirection} {withUnit(data.current.windSpeedMph, 'mph')}</dd></div>
+                                <div><dt>Gusts</dt><dd>{withUnit(data.current.windGustMph, 'mph')}</dd></div>
+                                <div><dt>Humidity</dt><dd>{withUnit(data.current.humidityPercent, '%')}</dd></div>
+                                <div><dt>Visibility</dt><dd>{withUnit(data.current.visibilityMiles, 'mi')}</dd></div>
+                            </dl>
+                        </div>
+                    </article>
+
+                    <article className="card evidence">
+                        <span className="tile-icon"><Icon name="wind" /></span>
+                        <div>
+                            <p className="source">Forecast and road conditions</p>
+                            <h3>Not connected</h3>
+                            <p className="small">
+                                There is no live forecast or road feed yet, so the agent decides from the current reading
+                                and active alerts. Pick a mock scenario in the top bar to see a decision with a forecast.
+                            </p>
+                        </div>
+                    </article>
+                </>
+            )}
         </section>
     );
 }

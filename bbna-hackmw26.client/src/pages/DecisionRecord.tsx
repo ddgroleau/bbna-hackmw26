@@ -1,4 +1,4 @@
-import type { Decision, Situation } from '../api';
+import type { Analysis, Decision, Situation } from '../api';
 import { Icon, PageHead } from '../components';
 import type { IconName } from '../components';
 import { POSTURES, formatCount, formatDateTime } from '../format';
@@ -10,24 +10,42 @@ interface RecordEvent {
     detail: string;
 }
 
-export function DecisionRecordPage({ situation, decision }: { situation: Situation; decision?: Decision }) {
-    const { facility, weather, recommendation, decisionWindow, thresholds } = situation;
+interface Props {
+    situation: Situation;
+    // The agent's recommendation, once it has one.
+    analysis?: Analysis;
+    // True when the agent analyzed the live feeds rather than a mock scenario.
+    live: boolean;
+    decision?: Decision;
+}
+
+export function DecisionRecordPage({ situation, analysis, live, decision }: Props) {
+    const { facility, weather, decisionWindow, thresholds } = situation;
     const stamp = (value: string) => formatDateTime(value, facility.timeZone);
-    const recommended = POSTURES[recommendation.posture].label;
+    const recommended = analysis ? POSTURES[analysis.posture].label : undefined;
 
     const events: RecordEvent[] = [
         {
             icon: 'refresh',
             when: stamp(situation.generatedAt),
             title: 'Automated evidence capture completed',
-            detail: `${weather.alerts.length} active NWS ${weather.alerts.length === 1 ? 'alert' : 'alerts'}, ${weather.forecast.length} forecast periods, and 1 road report retained.`,
+            detail: live
+                ? 'Latest NWS station reading and active alerts retained from the live feeds.'
+                : `${weather.alerts.length} active NWS ${weather.alerts.length === 1 ? 'alert' : 'alerts'}, ${weather.forecast.length} forecast periods, and 1 road report retained from the mock scenario.`,
         },
-        {
-            icon: 'shield',
-            when: stamp(situation.generatedAt),
-            title: 'Rules engine generated recommendation',
-            detail: `${recommended} at ${recommendation.confidence}% confidence, scored against ruleset ${thresholds.rulesetVersion}. No input was manually suppressed.`,
-        },
+        analysis
+            ? {
+                icon: 'shield',
+                when: stamp(situation.generatedAt),
+                title: 'AI agent generated recommendation',
+                detail: `${recommended} at ${analysis.confidence}% confidence, judged against threshold table ${thresholds.rulesetVersion}.`,
+            }
+            : {
+                icon: 'clock',
+                when: 'Pending',
+                title: 'AI agent recommendation not available',
+                detail: 'The agent has not returned an analysis for this evidence.',
+            },
     ];
 
     if (decision) {
@@ -37,9 +55,11 @@ export function DecisionRecordPage({ situation, decision }: { situation: Situati
                 icon: 'check',
                 when: stamp(decision.sentAt),
                 title: `Manager approved ${chosen.toLowerCase()}`,
-                detail: decision.posture === recommendation.posture
-                    ? 'The recommendation was accepted without change.'
-                    : `The manager changed the posture from the recommended ${recommended.toLowerCase()}.`,
+                detail: !analysis
+                    ? 'The decision was made without an agent recommendation.'
+                    : decision.posture === analysis.posture
+                        ? 'The recommendation was accepted without change.'
+                        : `The manager changed the posture from the recommended ${POSTURES[analysis.posture].label.toLowerCase()}.`,
             },
             {
                 icon: 'send',
@@ -62,11 +82,12 @@ export function DecisionRecordPage({ situation, decision }: { situation: Situati
             recordId: decisionWindow.recordId,
             facility: { id: facility.id, name: facility.name },
             operatingDate: decisionWindow.operatingDate,
-            scenario: situation.scenario,
+            source: live ? 'live' : situation.scenario,
             capturedAt: situation.generatedAt,
             rulesetVersion: thresholds.rulesetVersion,
-            recommendation,
-            weather,
+            agentRecommendation: analysis ?? null,
+            // The situation's weather is mock data, so it is only evidence for a scenario run.
+            scenarioWeather: live ? null : weather,
             decision: decision ?? null,
         };
         const url = URL.createObjectURL(new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' }));

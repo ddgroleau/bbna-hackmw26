@@ -146,6 +146,84 @@ export interface Decision extends NotifyRequest {
     sentAt: string;
 }
 
+// The agent's recommendation from /api/analyze.
+export interface Analysis {
+    posture: Posture;
+    summary: string;
+    confidence: number;
+    email: string;
+}
+
+export type AnalysisState =
+    | { status: 'loading' }
+    | { status: 'ready'; data: Analysis }
+    | { status: 'error'; message: string };
+
+export interface LiveAlert {
+    id: string;
+    event: string;
+    severity: string;
+    urgency: string;
+    certainty: string;
+    headline: string | null;
+    areaDescription: string | null;
+    ends: string | null;
+    expires: string | null;
+}
+
+// The live National Weather Service reading and alerts the agent analyzes.
+export interface LiveWeather {
+    current: {
+        stationName: string;
+        observedAt: string;
+        conditions: string | null;
+        temperatureF: number | null;
+        feelsLikeF: number | null;
+        humidityPercent: number | null;
+        windSpeedMph: number | null;
+        windGustMph: number | null;
+        windDirection: string | null;
+        visibilityMiles: number | null;
+    };
+    alerts: LiveAlert[];
+}
+
+const analysesInFlight = new Map<string, Promise<Analysis>>();
+
+// Each analysis is a paid model call, so identical requests made while one is still running
+// (React's development double-render, a double click) share that one request.
+export function fetchAnalysis(scenario?: string): Promise<Analysis> {
+    const query = scenario ? `?scenario=${encodeURIComponent(scenario)}` : '';
+    let request = analysesInFlight.get(query);
+    if (!request) {
+        request = requestAnalysis(query).finally(() => analysesInFlight.delete(query));
+        analysesInFlight.set(query, request);
+    }
+    return request;
+}
+
+async function requestAnalysis(query: string): Promise<Analysis> {
+    const response = await fetch(`/api/analyze${query}`);
+    const body = await response.json().catch(() => null);
+    if (!response.ok || !body?.success) {
+        throw new Error(body?.error ?? `The agent endpoint answered ${response.status}.`);
+    }
+    return {
+        posture: body.data.PostureStatus,
+        summary: body.data.Summary,
+        confidence: body.data.ConfidencePercentage,
+        email: body.data.EmailNotification,
+    };
+}
+
+export async function fetchLiveWeather(): Promise<LiveWeather> {
+    const [current, alerts] = await Promise.all([fetch('/api/weather/current'), fetch('/api/weather/alerts')]);
+    if (!current.ok || !alerts.ok) {
+        throw new Error(`The live weather feed answered ${current.ok ? alerts.status : current.status}.`);
+    }
+    return { current: await current.json(), alerts: (await alerts.json()).alerts };
+}
+
 export async function fetchSituation(scenario?: string): Promise<Situation> {
     const query = scenario ? `?scenario=${encodeURIComponent(scenario)}` : '';
     const response = await fetch(`/api/situation${query}`);

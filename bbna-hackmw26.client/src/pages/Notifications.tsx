@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { sendNotification } from '../api';
-import type { Audience, Decision, Posture, Situation } from '../api';
+import type { Analysis, Audience, Decision, Posture, Situation } from '../api';
 import { Icon, PageHead } from '../components';
 import { AUDIENCES, AUDIENCE_ORDER, POSTURES, POSTURE_ORDER, formatCount, formatTime } from '../format';
 
@@ -8,6 +8,8 @@ const CHANNELS = ['SMS', 'Email', 'Voice for essential personnel'];
 
 interface Props {
     situation: Situation;
+    // The agent's recommendation, once it has one.
+    analysis?: Analysis;
     posture: Posture;
     onPostureChange: (posture: Posture) => void;
     edits: Record<string, string>;
@@ -16,8 +18,8 @@ interface Props {
     onSent: (decision: Decision) => void;
 }
 
-export function NotificationsPage({ situation, posture, onPostureChange, edits, onEdit, decision, onSent }: Props) {
-    const [audience, setAudience] = useState<Audience>('teleworkReady');
+export function NotificationsPage({ situation, analysis, posture, onPostureChange, edits, onEdit, decision, onSent }: Props) {
+    const [selected, setSelected] = useState<Audience | 'agent'>('agent');
     const [channels, setChannels] = useState(CHANNELS);
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string>();
@@ -25,9 +27,15 @@ export function NotificationsPage({ situation, posture, onPostureChange, edits, 
     const { people, facility, decisionWindow } = situation;
     const recipients = people.staff.recipients;
     const essentialCount = people.audiences.essential;
+    // The agent wrote its email for the posture it recommended, so its draft is only offered
+    // for that posture. For any other posture the per-audience templates apply.
+    const agentDraft = analysis && analysis.posture === posture ? analysis.email : undefined;
+    const audience = selected === 'agent' && !agentDraft ? 'teleworkReady' : selected;
     const key = `${posture}:${audience}`;
     const message = edits[key]
-        ?? situation.messageTemplates[posture][audience].replaceAll('{day}', decisionWindow.operatingDayLabel);
+        ?? (audience === 'agent'
+            ? agentDraft!
+            : situation.messageTemplates[posture][audience].replaceAll('{day}', decisionWindow.operatingDayLabel));
 
     function toggleChannel(channel: string) {
         setChannels(current => current.includes(channel) ? current.filter(c => c !== channel) : [...current, channel]);
@@ -65,23 +73,28 @@ export function NotificationsPage({ situation, posture, onPostureChange, edits, 
                             <span className={`chip ${decision ? 'chip-ok' : 'chip-warn'}`}>{decision ? 'Sent' : 'Draft'}</span>
                         </div>
 
-                        {posture !== situation.recommendation.posture && (
+                        {analysis && posture !== analysis.posture && (
                             <p className="banner tone-warn">
                                 <Icon name="alert" />
-                                This differs from the system recommendation ({POSTURES[situation.recommendation.posture].label}). The change will be recorded.
+                                This differs from the agent's recommendation ({POSTURES[analysis.posture].label}). The change will be recorded.
                             </p>
                         )}
 
                         <div className="segmented" role="tablist" aria-label="Audience">
+                            {agentDraft && (
+                                <button role="tab" aria-selected={audience === 'agent'} onClick={() => setSelected('agent')}>
+                                    Agent draft · all {formatCount(recipients)}
+                                </button>
+                            )}
                             {AUDIENCE_ORDER.map(id => (
-                                <button key={id} role="tab" aria-selected={audience === id} onClick={() => setAudience(id)}>
+                                <button key={id} role="tab" aria-selected={audience === id} onClick={() => setSelected(id)}>
                                     {AUDIENCES[id]} · {formatCount(people.audiences[id])}
                                 </button>
                             ))}
                         </div>
 
                         <textarea
-                            aria-label={`${AUDIENCES[audience]} message`}
+                            aria-label={audience === 'agent' ? 'Agent draft message' : `${AUDIENCES[audience]} message`}
                             value={message}
                             onChange={e => onEdit(key, e.target.value)}
                             readOnly={!!decision}
