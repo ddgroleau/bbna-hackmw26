@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AnalysisState, LiveWeather, Posture, Situation } from '../api';
+import type { AnalysisState, LiveForecast, LiveWeather, Posture, Situation } from '../api';
 import { Icon, PageHead } from '../components';
 import { AUDIENCES, AUDIENCE_ORDER, POSTURES, POSTURE_ORDER, formatCount, formatCountdown, formatDateTime, formatTemp, formatTime, useNow } from '../format';
 
@@ -428,19 +428,82 @@ function LiveWeatherData({ situation, liveWeather }: { situation: Situation; liv
                         </div>
                     </article>
 
-                    <article className="card evidence">
-                        <span className="tile-icon"><Icon name="wind" /></span>
-                        <div>
-                            <p className="source">Forecast and road conditions</p>
-                            <h3>Not connected</h3>
-                            <p className="small">
-                                There is no live forecast or road feed yet, so the agent decides from the current reading
-                                and active alerts. Pick a mock scenario in the top bar to see a decision with a forecast.
-                            </p>
-                        </div>
-                    </article>
+                    <LiveForecastCard situation={situation} forecast={data.forecast} />
                 </>
             )}
         </section>
+    );
+}
+
+const FORECAST_WINDOWS = [
+    ['overnight', 'Overnight'],
+    ['morningCommute', 'Morning commute'],
+    ['officeHours', 'Office hours'],
+    ['eveningCommute', 'Evening commute'],
+    ['wholeDay', 'Whole day'],
+] as const;
+
+// Shows the forecast for the day being decided, which is the same slice the agent is given.
+function LiveForecastCard({ situation, forecast }: { situation: Situation; forecast: LiveForecast | null }) {
+    const { decisionWindow, facility } = situation;
+    const zone = facility.timeZone;
+    const day = forecast?.days.find(entry => entry.date === decisionWindow.operatingDate);
+
+    return (
+        <article className="card evidence">
+            <span className="tile-icon"><Icon name="wind" /></span>
+            <div>
+                <p className="source">
+                    NWS workday forecast
+                    {forecast?.forecastUpdatedAt && <time>{formatDateTime(forecast.forecastUpdatedAt, zone)}</time>}
+                </p>
+                {day ? (
+                    <>
+                        <h3>Forecast for {decisionWindow.operatingDayLabel}</h3>
+                        <div className="table-scroll">
+                            <table className="data nowrap">
+                                <thead>
+                                    <tr>
+                                        <th>Window</th><th>Snow</th><th>Ice</th><th>Wind chill</th>
+                                        <th>Heat index</th><th>Gusts</th><th>Precip</th><th>Thunder</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {FORECAST_WINDOWS.map(([key, label]) => {
+                                        const slot = day[key];
+                                        return (
+                                            <tr key={key}>
+                                                <td>
+                                                    <strong>{label}</strong>
+                                                    <span>{formatTime(slot.start, zone)}–{formatTime(slot.end, zone)}</span>
+                                                </td>
+                                                <td>{withUnit(slot.snowInches, 'in')}</td>
+                                                <td>{withUnit(slot.iceInches, 'in')}</td>
+                                                <td>{formatTemp(slot.lowestWindChillF)}</td>
+                                                <td>{formatTemp(slot.highestHeatIndexF)}</td>
+                                                <td>{withUnit(slot.highestWindGustMph, 'mph')}</td>
+                                                <td>{withUnit(slot.highestPrecipChancePercent, '%')}</td>
+                                                <td>{withUnit(slot.highestThunderChancePercent, '%')}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <p className="small muted">Road conditions have no live feed yet.</p>
+                    </>
+                ) : (
+                    <>
+                        <h3>Forecast unavailable</h3>
+                        <p className="small">
+                            {forecast
+                                ? `The forecast feed has no entry for ${decisionWindow.operatingDayLabel}.`
+                                : 'The forecast feed could not be reached.'}
+                            {' '}The agent decided from the current reading and active alerts.
+                        </p>
+                    </>
+                )}
+            </div>
+        </article>
     );
 }

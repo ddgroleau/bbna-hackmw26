@@ -186,6 +186,36 @@ export interface LiveWeather {
         visibilityMiles: number | null;
     };
     alerts: LiveAlert[];
+    // Null when the forecast feed could not be reached; the reading and alerts still show.
+    forecast: LiveForecast | null;
+}
+
+// One slice of a workday from /api/weather/forecast. A null value was not forecast or does not apply.
+export interface ForecastWindow {
+    start: string;
+    end: string;
+    snowInches: number | null;
+    iceInches: number | null;
+    lowestWindChillF: number | null;
+    highestHeatIndexF: number | null;
+    highestWindGustMph: number | null;
+    highestPrecipChancePercent: number | null;
+    highestThunderChancePercent: number | null;
+}
+
+export interface ForecastDay {
+    date: string;
+    dayOfWeek: string;
+    overnight: ForecastWindow;
+    morningCommute: ForecastWindow;
+    officeHours: ForecastWindow;
+    eveningCommute: ForecastWindow;
+    wholeDay: ForecastWindow;
+}
+
+export interface LiveForecast {
+    forecastUpdatedAt: string | null;
+    days: ForecastDay[];
 }
 
 const analysesInFlight = new Map<string, Promise<Analysis>>();
@@ -217,11 +247,17 @@ async function requestAnalysis(query: string): Promise<Analysis> {
 }
 
 export async function fetchLiveWeather(): Promise<LiveWeather> {
-    const [current, alerts] = await Promise.all([fetch('/api/weather/current'), fetch('/api/weather/alerts')]);
+    const [current, alerts, forecast] = await Promise.all([
+        fetch('/api/weather/current'),
+        fetch('/api/weather/alerts'),
+        fetch('/api/weather/forecast')
+            .then(response => (response.ok ? response.json() : null))
+            .catch(() => null),
+    ]);
     if (!current.ok || !alerts.ok) {
         throw new Error(`The live weather feed answered ${current.ok ? alerts.status : current.status}.`);
     }
-    return { current: await current.json(), alerts: (await alerts.json()).alerts };
+    return { current: await current.json(), alerts: (await alerts.json()).alerts, forecast };
 }
 
 // Decision log (server/Audit). Each record holds the captured evidence, the recommendation,
@@ -308,7 +344,7 @@ async function createDecisionRecord({ situation, analysis, live, liveWeather }: 
             rulesetVersion: thresholds.rulesetVersion,
             evidence: {
                 summary: live
-                    ? 'Latest NWS station reading and active alerts retained from the live feeds.'
+                    ? `Latest NWS station reading, active alerts${liveWeather?.forecast ? ', and workday forecast' : ''} retained from the live feeds.`
                     : `${alerts} active NWS ${alerts === 1 ? 'alert' : 'alerts'}, ${weather.forecast.length} forecast periods, and 1 road report retained from the mock scenario.`,
                 sources: {
                     source: live ? 'live' : situation.scenario,

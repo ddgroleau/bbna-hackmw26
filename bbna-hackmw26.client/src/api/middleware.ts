@@ -62,16 +62,17 @@ async function handleAnalyzeRequest(req: IncomingMessage, res: ServerResponse) {
     if (scenario) {
       // A named scenario replaces the live feeds with that scenario's mock weather.
       const situation = await fetchServerJson(`/api/situation?scenario=${encodeURIComponent(scenario)}`);
-      sources = { weather: null, alerts: null, situation, managerNote };
+      sources = { weather: null, alerts: null, forecast: null, situation, managerNote };
     } else {
       // The raw reading is required. Alerts and facility context sharpen the analysis but must
       // not block it, so a failure there reaches the agent as null and it reports the gap.
-      const [weather, alerts, situation] = await Promise.all([
+      const [weather, alerts, forecast, situation] = await Promise.all([
         fetchServerJson('/api/weather/raw'),
         fetchServerJson('/api/weather/alerts').catch(() => null),
+        fetchServerJson('/api/weather/forecast').catch(() => null),
         fetchServerJson('/api/situation').catch(() => null),
       ]);
-      sources = { weather, alerts, situation, managerNote };
+      sources = { weather, alerts, forecast, situation, managerNote };
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Weather data unavailable';

@@ -20,6 +20,8 @@ export interface AnalysisSources {
   // case the scenario weather inside `situation` is analyzed instead.
   weather: Record<string, unknown> | null;
   alerts: Record<string, unknown> | null;
+  // The live workday forecast from /api/weather/forecast, about a week of workdays.
+  forecast: Record<string, unknown> | null;
   situation: Record<string, unknown> | null;
   // Free text from the `data` query parameter, e.g. something the feeds cannot see.
   managerNote: string | null;
