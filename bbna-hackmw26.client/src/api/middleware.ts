@@ -54,16 +54,25 @@ function fetchServerJson(pathname: string): Promise<Record<string, unknown>> {
 async function handleAnalyzeRequest(req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url || '', 'http://localhost');
 
+  const scenario = url.searchParams.get('scenario');
+  const managerNote = url.searchParams.get('data')?.trim() || null;
+
   let sources: AnalysisSources;
   try {
-    // The raw reading is required. Alerts and facility context sharpen the analysis but must
-    // not block it, so a failure there reaches the agent as null and it reports the gap.
-    const [weather, alerts, situation] = await Promise.all([
-      fetchServerJson('/api/weather/raw'),
-      fetchServerJson('/api/weather/alerts').catch(() => null),
-      fetchServerJson('/api/situation').catch(() => null),
-    ]);
-    sources = { weather, alerts, situation, managerNote: url.searchParams.get('data')?.trim() || null };
+    if (scenario) {
+      // A named scenario replaces the live feeds with that scenario's mock weather.
+      const situation = await fetchServerJson(`/api/situation?scenario=${encodeURIComponent(scenario)}`);
+      sources = { weather: null, alerts: null, situation, managerNote };
+    } else {
+      // The raw reading is required. Alerts and facility context sharpen the analysis but must
+      // not block it, so a failure there reaches the agent as null and it reports the gap.
+      const [weather, alerts, situation] = await Promise.all([
+        fetchServerJson('/api/weather/raw'),
+        fetchServerJson('/api/weather/alerts').catch(() => null),
+        fetchServerJson('/api/situation').catch(() => null),
+      ]);
+      sources = { weather, alerts, situation, managerNote };
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Weather data unavailable';
     console.error('❌ Error fetching weather data:', errorMessage);

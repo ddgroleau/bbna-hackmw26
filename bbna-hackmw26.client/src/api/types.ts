@@ -13,10 +13,12 @@ export interface AnalyzeResponse {
   EmailNotification: string;
 }
 
-// What the agent is given. Only `weather` is required; the rest is null when the
-// server could not provide it, and the agent is told to treat that as missing data.
+// What the agent is given. Anything null was unavailable or not provided, and the agent is
+// told to treat it as missing data.
 export interface AnalysisSources {
-  weather: Record<string, unknown>;
+  // The live reading from /api/weather/raw. Null when a scenario was requested, in which
+  // case the scenario weather inside `situation` is analyzed instead.
+  weather: Record<string, unknown> | null;
   alerts: Record<string, unknown> | null;
   situation: Record<string, unknown> | null;
   // Free text from the `data` query parameter, e.g. something the feeds cannot see.
