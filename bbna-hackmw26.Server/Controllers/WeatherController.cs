@@ -73,6 +73,39 @@ namespace bbna_hackmw26.Server.Controllers
         }
 
         /// <summary>
+        /// GET /api/weather/alerts
+        /// Returns every National Weather Service alert currently in effect at the building
+        /// (e.g. Tornado Warning, Severe Thunderstorm Watch, Flash Flood Warning, Heat Advisory),
+        /// most serious first. An empty list is normal and means no active alerts.
+        /// See <see cref="WeatherAlertsResponse"/> and <see cref="WeatherAlert"/> for every field.
+        /// </summary>
+        /// <param name="severeOnly">If true, only return Extreme and Severe alerts (threats to life or property).</param>
+        /// <param name="ct">Cancelled if the caller disconnects.</param>
+        /// <response code="200">The active alerts (possibly none).</response>
+        /// <response code="502">The National Weather Service could not be reached or returned an error.</response>
+        [HttpGet("alerts", Name = "GetWeatherAlerts")]
+        [ProducesResponseType<WeatherAlertsResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway)]
+        public async Task<IActionResult> GetAlerts([FromQuery] bool severeOnly = false, CancellationToken ct = default)
+        {
+            try
+            {
+                var raw = await weather.GetActiveAlertsAsync(ct);
+                var response = WeatherAlert.ListFromRaw(raw, building.Value);
+
+                // Optional filter: drop Moderate/Minor/Unknown alerts (e.g. advisories).
+                if (severeOnly)
+                    response = response with { Alerts = response.Alerts.Where(a => a.IsSevere).ToList() };
+
+                return Ok(response);
+            }
+            catch (HttpRequestException ex)
+            {
+                return NwsUnavailable(ex);
+            }
+        }
+
+        /// <summary>
         /// The error response used when NWS is down or returns an error: 502 Bad Gateway
         /// (an upstream service failed, not our server) with a standard error body.
         /// </summary>

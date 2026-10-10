@@ -18,6 +18,12 @@ namespace bbna_hackmw26.Server.Weather
     /// <param name="RetrievedAt">When our server fetched it from NWS (UTC). Cached readings keep their original time.</param>
     public record RawObservation(ObservationStation Station, string SourceUrl, JsonElement Data, DateTimeOffset RetrievedAt);
 
+    /// <summary>The active-alerts list exactly as NWS returned it, plus where and when it came from.</summary>
+    /// <param name="SourceUrl">The exact NWS URL the alerts were fetched from.</param>
+    /// <param name="Data">The unmodified NWS JSON: a "features" array with one entry per alert (empty if none).</param>
+    /// <param name="RetrievedAt">When our server fetched it from NWS (UTC). Cached lists keep their original time.</param>
+    public record RawAlerts(string SourceUrl, JsonElement Data, DateTimeOffset RetrievedAt);
+
     /// <summary>
     /// Talks to the National Weather Service API to get weather for the configured building.
     ///
@@ -29,6 +35,10 @@ namespace bbna_hackmw26.Server.Weather
     /// for a few minutes (Nws:CacheMinutes in appsettings.json), because stations only report
     /// about once an hour and we don't want every page load to hit NWS.
     ///
+    /// Active alerts (tornado warnings, severe thunderstorm watches, etc.) come from a separate,
+    /// single call (GET /alerts/active?point={lat},{lon}), cached for a shorter time
+    /// (Nws:AlertsCacheMinutes) because warnings are time-critical.
+    ///
     /// The HttpClient is pre-configured in Program.cs with the NWS base URL and required headers.
     /// </summary>
     public class NwsWeatherService(
@@ -39,6 +49,9 @@ namespace bbna_hackmw26.Server.Weather
     {
         // Key the latest reading is stored under in the in-memory cache.
         private const string LatestObservationCacheKey = "nws:latest-observation";
+
+        // Key the active alerts list is stored under in the in-memory cache.
+        private const string ActiveAlertsCacheKey = "nws:active-alerts";
 
         private readonly BuildingOptions _building = building.Value;
         private readonly NwsOptions _nws = nws.Value;
@@ -76,6 +89,42 @@ namespace bbna_hackmw26.Server.Weather
         }
 
         /// <summary>
+        /// Gets every NWS alert (watches, warnings, advisories) currently in effect at the building's location.
+        /// Returns the cached list if we fetched one within the last minute or so.
+        /// An empty list is normal and means there are no active alerts.
+        /// </summary>
+        /// <exception cref="HttpRequestException">NWS could not be reached or returned an error.</exception>
+        public async Task<RawAlerts> GetActiveAlertsAsync(CancellationToken ct)
+        {
+            // Fetched recently? Reuse it instead of calling NWS again.
+            if (cache.TryGetValue(ActiveAlertsCacheKey, out RawAlerts? cached) && cached is not null)
+                return cached;
+
+            // Ask for alerts covering the building's exact point.
+            // status=actual leaves out NWS test and exercise messages, so we never show a fake warning.
+            var url = $"alerts/active?point={BuildingPoint()}&status=actual";
+            var data = await GetJsonAsync(url, ct);
+
+            var alerts = new RawAlerts(new Uri(http.BaseAddress!, url).ToString(), data, DateTimeOffset.UtcNow);
+
+            // Cache it briefly. Failed requests throw before reaching this line, so errors are never cached.
+            cache.Set(ActiveAlertsCacheKey, alerts, TimeSpan.FromMinutes(_nws.AlertsCacheMinutes));
+            return alerts;
+        }
+
+        /// <summary>
+        /// The building's coordinates formatted the way NWS expects: "lat,lon", e.g. "39.1045,-94.5909".
+        /// NWS only accepts up to 4 decimal places, and InvariantCulture guarantees a "."
+        /// decimal separator regardless of the PC's regional settings.
+        /// </summary>
+        private string BuildingPoint()
+        {
+            var lat = _building.Latitude.ToString("0.####", CultureInfo.InvariantCulture);
+            var lon = _building.Longitude.ToString("0.####", CultureInfo.InvariantCulture);
+            return $"{lat},{lon}";
+        }
+
+        /// <summary>
         /// Works out which weather station is closest to the building (steps 1-2).
         /// The result is cached, so NWS is only asked once per app run.
         /// </summary>
@@ -84,11 +133,8 @@ namespace bbna_hackmw26.Server.Weather
             // Already looked it up earlier? Reuse it.
             if (_station is not null) return _station;
 
-            // Step 1: look up the building's point. NWS only accepts up to 4 decimal places,
-            // and InvariantCulture guarantees a "." decimal separator regardless of PC settings.
-            var lat = _building.Latitude.ToString("0.####", CultureInfo.InvariantCulture);
-            var lon = _building.Longitude.ToString("0.####", CultureInfo.InvariantCulture);
-            var point = await GetJsonAsync($"points/{lat},{lon}", ct);
+            // Step 1: look up which forecast grid the building's point falls in.
+            var point = await GetJsonAsync($"points/{BuildingPoint()}", ct);
 
             // The point response tells us where to find the list of nearby stations.
             var stationsUrl = point.GetProperty("properties").GetProperty("observationStations").GetString()!;

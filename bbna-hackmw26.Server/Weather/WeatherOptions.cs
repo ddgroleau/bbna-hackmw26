@@ -43,5 +43,9 @@ namespace bbna_hackmw26.Server.Weather
         // How long (in minutes) to reuse a weather reading before asking NWS again.
         // Stations only report about once an hour, so a few minutes of caching loses nothing.
         public int CacheMinutes { get; set; } = 5;
+
+        // How long (in minutes) to reuse the active alerts list before asking NWS again.
+        // Kept short because warnings like tornado warnings are time-critical.
+        public int AlertsCacheMinutes { get; set; } = 1;
     }
 }

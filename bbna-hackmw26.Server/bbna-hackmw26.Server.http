@@ -15,3 +15,14 @@ GET {{bbna_hackmw26.Server_HostAddress}}/api/weather/current
 Accept: application/json
 
 ###
+
+GET {{bbna_hackmw26.Server_HostAddress}}/api/weather/alerts
+Accept: application/json
+
+###
+
+# Only Extreme/Severe alerts (e.g. tornado and severe thunderstorm warnings)
+GET {{bbna_hackmw26.Server_HostAddress}}/api/weather/alerts?severeOnly=true
+Accept: application/json
+
+###
