@@ -1,3 +1,5 @@
+import decisionMatrix from './api/decision-matrix.json';
+
 export type Posture = 'normal' | 'delay' | 'early_dismissal' | 'telework' | 'closure';
 export type Audience = 'teleworkReady' | 'onsite' | 'essential';
 
@@ -332,16 +334,21 @@ export interface RecordEvidence {
     liveWeather?: LiveWeather;
 }
 
+// The agent judges against the decision matrix, so that is the ruleset the log names.
+// The matrix carries no version number; its title identifies it.
+const RULESET = decisionMatrix.title;
+
 async function createDecisionRecord({ situation, analysis, live, liveWeather }: RecordEvidence): Promise<DecisionRecordDetail> {
-    const { weather, thresholds } = situation;
+    const { weather } = situation;
     const alerts = weather.alerts.length;
     const response = await fetch('/api/decisions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             recommendedPosture: analysis.posture,
+            recommendedBy: 'ai-agent',
             reason: `${analysis.confidence}% confidence. ${analysis.summary}`,
-            rulesetVersion: thresholds.rulesetVersion,
+            rulesetVersion: RULESET,
             evidence: {
                 summary: live
                     ? `Latest NWS station reading, active alerts${liveWeather?.forecast ? ', and workday forecast' : ''} retained from the live feeds.`
@@ -373,7 +380,7 @@ const pendingRecords = new Map<string, Promise<DecisionRecordDetail>>();
 // evidence does not pile up records. Anything else (decided, or a different recommendation) starts a new one.
 export function ensureDecisionRecord(evidence: RecordEvidence): Promise<DecisionRecordDetail> {
     const { posture } = evidence.analysis;
-    const { rulesetVersion } = evidence.situation.thresholds;
+    const rulesetVersion = RULESET;
     const key = `${posture}:${rulesetVersion}`;
 
     // React runs effects twice in development; share the request so only one record is created.

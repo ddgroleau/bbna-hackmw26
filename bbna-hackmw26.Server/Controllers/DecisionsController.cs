@@ -30,7 +30,7 @@ namespace bbna_hackmw26.Server.Controllers
                 request.FacilityCode ?? building.Value.Code,
                 request.FacilityName ?? building.Value.Name,
                 new CreateDecisionRequest(request.FacilityCode, request.FacilityName, recommended,
-                    request.Reason, request.RulesetVersion, request.Evidence),
+                    request.Reason, request.RulesetVersion, request.Evidence, request.RecommendedBy),
                 ct);
             return StatusCode(StatusCodes.Status201Created, detail);
         }
@@ -44,7 +44,7 @@ namespace bbna_hackmw26.Server.Controllers
             if (existing is null)
                 return Problem(title: $"No decision record '{id}'.", statusCode: StatusCodes.Status404NotFound);
 
-            // Overriding the rules engine must be explained for after-action review.
+            // Overriding the recommendation must be explained for after-action review.
             if (final != existing.Record.RecommendedPosture && string.IsNullOrWhiteSpace(request.Rationale))
                 return Problem(title: "A rationale is required when overriding the recommendation.",
                     statusCode: StatusCodes.Status400BadRequest);

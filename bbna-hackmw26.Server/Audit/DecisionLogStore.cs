@@ -19,7 +19,7 @@ namespace bbna_hackmw26.Server.Audit
 
         private readonly string _connectionString = connectionString;
 
-        // Creates a record awaiting a human decision, logging the captured evidence and the rules engine recommendation.
+        // Creates a record awaiting a human decision, logging the captured evidence and the recommendation.
         public async Task<DecisionRecordDetail> CreateAsync(
             string facilityCode, string facilityName, CreateDecisionRequest request, CancellationToken ct)
         {
@@ -42,10 +42,13 @@ namespace bbna_hackmw26.Server.Audit
                 "Automated evidence capture completed", request.Evidence.Summary,
                 request.Evidence.Sources?.GetRawText(), ct);
 
-            await AppendEventAsync(conn, id, prev, now, AuditEventKind.RecommendationGenerated, "rules-engine",
-                "Rules engine generated recommendation",
+            // The log names who made the recommendation, so it follows the caller rather than assuming.
+            var byAgent = request.RecommendedBy == RecommendationSource.AiAgent;
+            var source = byAgent ? RecommendationSource.AiAgent : RecommendationSource.RulesEngine;
+            await AppendEventAsync(conn, id, prev, now, AuditEventKind.RecommendationGenerated, source,
+                byAgent ? "AI agent generated recommendation" : "Rules engine generated recommendation",
                 $"Recommended {request.RecommendedPosture.Label().ToLowerInvariant()} under ruleset {request.RulesetVersion}. {request.Reason}",
-                JsonSerializer.Serialize(new { recommendedPosture = request.RecommendedPosture.ToString(), rulesetVersion = request.RulesetVersion }),
+                JsonSerializer.Serialize(new { recommendedPosture = request.RecommendedPosture.ToString(), rulesetVersion = request.RulesetVersion, recommendedBy = source }),
                 ct);
 
             await tx.CommitAsync(ct);

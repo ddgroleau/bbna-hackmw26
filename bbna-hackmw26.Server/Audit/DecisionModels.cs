@@ -37,6 +37,13 @@ namespace bbna_hackmw26.Server.Audit
         public const string DecisionRecorded = "DecisionRecorded";
     }
 
+    // What produced a recommendation, so the log attributes it to the right author.
+    public static class RecommendationSource
+    {
+        public const string AiAgent = "ai-agent";
+        public const string RulesEngine = "rules-engine";
+    }
+
     // Requests
 
     // The single body POST /api/decisions accepts. Without a RecordId it opens a new record from the
@@ -50,17 +57,20 @@ namespace bbna_hackmw26.Server.Audit
         Posture? RecommendedPosture,
         string? Reason,
         string? RulesetVersion,
-        EvidenceInput? Evidence);
+        EvidenceInput? Evidence,
+        string? RecommendedBy = null);
 
 
-    // Facility fields fall back to the configured Building when omitted.
+    // Facility fields fall back to the configured Building when omitted. RecommendedBy is a
+    // RecommendationSource; callers that omit it are logged as the rules engine.
     public record CreateDecisionRequest(
         string? FacilityCode,
         string? FacilityName,
         Posture RecommendedPosture,
         string Reason,
         string RulesetVersion,
-        EvidenceInput Evidence);
+        EvidenceInput Evidence,
+        string? RecommendedBy = null);
 
     // Summary is the human-readable line shown in the timeline; Sources holds the raw payloads retained for review.
     public record EvidenceInput(string Summary, JsonElement? Sources);
