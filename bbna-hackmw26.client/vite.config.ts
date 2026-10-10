@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import child_process from 'child_process';
 import { env } from 'process';
+import express from 'express';
 
 const baseFolder =
     env.APPDATA !== undefined && env.APPDATA !== ''
@@ -37,9 +38,64 @@ if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
 const target = env.ASPNETCORE_HTTPS_PORT ? `https://localhost:${env.ASPNETCORE_HTTPS_PORT}` :
     env.ASPNETCORE_URLS ? env.ASPNETCORE_URLS.split(';')[0] : 'https://localhost:7008';
 
+// Custom plugin to handle API routes
+function apiPlugin() {
+    return {
+        name: 'api-plugin',
+        configureServer(viteServer: any) {
+            // Add middleware BEFORE other middlewares
+            viteServer.middlewares.use(express.json());
+            viteServer.middlewares.use((req: any, res: any, next: any) => {
+                if (!req.url.startsWith('/api')) {
+                    return next();
+                }
+
+                if (req.url.startsWith('/api/analyze') && req.method === 'GET') {
+                    try {
+                        const url = new URL(`http://localhost${req.url}`);
+                        const data = url.searchParams.get('data');
+                        
+                        if (!data) {
+                            res.writeHead(400, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ 
+                                success: false, 
+                                error: 'No data provided' 
+                            }));
+                            return;
+                        }
+
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({
+                            success: true,
+                            data: {
+                                summary: 'Analysis pending - AWS Strands integration required',
+                                status: 'pending'
+                            }
+                        }));
+                        return;
+                    } catch (error) {
+                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({
+                            success: false,
+                            error: 'Internal server error'
+                        }));
+                        return;
+                    }
+                }
+                
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    success: false, 
+                    error: 'Endpoint not found' 
+                }));
+            });
+        }
+    };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [plugin()],
+    plugins: [plugin(), apiPlugin()],
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url))
