@@ -205,6 +205,12 @@ td strong + span { font-size: 12px; color: var(--blue); }
 .meter-key { display: flex; gap: 18px; font-size: 13px; color: var(--blue); }
 .meter-key span { display: flex; align-items: center; gap: 6px; }
 .meter-key .dot { width: 8px; height: 8px; }
+.impact-basis { margin: -10px 0 18px; }
+.impact-groups { display: grid; gap: 12px; margin-top: 18px; }
+.impact-groups li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 12px; font-size: 14px; }
+.impact-groups strong { display: block; font-weight: 500; }
+.impact-groups div span { font-size: 13px; color: var(--blue); }
+.impact-count { color: var(--ink); font-weight: 500; }
 
 .evidence { display: flex; gap: 18px; padding: 22px 26px; }
 .evidence > div { flex: 1; min-width: 0; }
