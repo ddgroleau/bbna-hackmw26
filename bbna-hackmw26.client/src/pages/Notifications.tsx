@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { sendNotification } from '../api';
-import type { Audience, Decision, Posture, Situation } from '../api';
+import { recordDecision, sendNotification } from '../api';
+import type { Audience, Decision, DecisionRecordDetail, Posture, Situation } from '../api';
 import { Icon, PageHead } from '../components';
 import { AUDIENCES, AUDIENCE_ORDER, POSTURES, POSTURE_ORDER, formatCount, formatTime } from '../format';
 
@@ -14,13 +14,19 @@ interface Props {
     onEdit: (key: string, message: string) => void;
     decision?: Decision;
     onSent: (decision: Decision) => void;
+    record?: DecisionRecordDetail;
+    recordError?: string;
+    onRecorded: (record: DecisionRecordDetail) => void;
 }
 
-export function NotificationsPage({ situation, posture, onPostureChange, edits, onEdit, decision, onSent }: Props) {
+export function NotificationsPage({
+    situation, posture, onPostureChange, edits, onEdit, decision, onSent, record, recordError, onRecorded,
+}: Props) {
     const [audience, setAudience] = useState<Audience>('teleworkReady');
     const [channels, setChannels] = useState(CHANNELS);
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string>();
+    const [rationale, setRationale] = useState('');
 
     const { people, facility, decisionWindow } = situation;
     const recipients = people.staff.recipients;
@@ -28,15 +34,24 @@ export function NotificationsPage({ situation, posture, onPostureChange, edits, 
     const key = `${posture}:${audience}`;
     const message = edits[key]
         ?? situation.messageTemplates[posture][audience].replaceAll('{day}', decisionWindow.operatingDayLabel);
+    const overriding = posture !== situation.recommendation.posture;
+    // Once the decision is in the log it cannot change, even if the release itself has to be retried.
+    const decided = record?.record.status === 'Decided';
+    const locked = !!decision || decided;
 
     function toggleChannel(channel: string) {
         setChannels(current => current.includes(channel) ? current.filter(c => c !== channel) : [...current, channel]);
     }
 
+    // The decision goes into the log before anything is released, so every release has a record behind it.
     async function send() {
+        if (!record) return;
         setSending(true);
         setError(undefined);
         try {
+            if (!decided) {
+                onRecorded(await recordDecision(record.record.id, posture, overriding ? rationale.trim() : undefined));
+            }
             onSent(await sendNotification({ posture, channels, recipients, essentialRecipients: essentialCount }));
         } catch (e) {
             setError(e instanceof Error ? e.message : 'The notification request failed.');
@@ -58,18 +73,29 @@ export function NotificationsPage({ situation, posture, onPostureChange, edits, 
                         <div className="compose-head">
                             <label className="field">
                                 <span className="eyebrow muted">Operating posture</span>
-                                <select value={posture} onChange={e => onPostureChange(e.target.value as Posture)} disabled={!!decision}>
+                                <select value={posture} onChange={e => onPostureChange(e.target.value as Posture)} disabled={locked}>
                                     {POSTURE_ORDER.map(id => <option key={id} value={id}>{POSTURES[id].label}</option>)}
                                 </select>
                             </label>
                             <span className={`chip ${decision ? 'chip-ok' : 'chip-warn'}`}>{decision ? 'Sent' : 'Draft'}</span>
                         </div>
 
-                        {posture !== situation.recommendation.posture && (
-                            <p className="banner tone-warn">
-                                <Icon name="alert" />
-                                This differs from the system recommendation ({POSTURES[situation.recommendation.posture].label}). The change will be recorded.
-                            </p>
+                        {overriding && (
+                            <>
+                                <p className="banner tone-warn">
+                                    <Icon name="alert" />
+                                    This differs from the system recommendation ({POSTURES[situation.recommendation.posture].label}). The change will be recorded.
+                                </p>
+                                <textarea
+                                    className="rationale"
+                                    aria-label="Reason for changing the recommendation"
+                                    placeholder="Required: why are you changing the recommended posture?"
+                                    value={rationale}
+                                    onChange={e => setRationale(e.target.value)}
+                                    readOnly={locked}
+                                    rows={3}
+                                />
+                            </>
                         )}
 
                         <div className="segmented" role="tablist" aria-label="Audience">
@@ -96,7 +122,7 @@ export function NotificationsPage({ situation, posture, onPostureChange, edits, 
                                         type="checkbox"
                                         checked={channels.includes(channel)}
                                         onChange={() => toggleChannel(channel)}
-                                        disabled={!!decision}
+                                        disabled={locked}
                                     />
                                     {channel}
                                 </label>
@@ -110,12 +136,23 @@ export function NotificationsPage({ situation, posture, onPostureChange, edits, 
                                 including {formatCount(decision.essentialRecipients)} essential personnel. Simulated: no messages left the system.
                             </p>
                         ) : (
-                            <button className="btn btn-primary btn-wide" onClick={send} disabled={sending || channels.length === 0}>
+                            <button
+                                className="btn btn-primary btn-wide"
+                                onClick={send}
+                                disabled={sending || !record || channels.length === 0 || (overriding && !decided && !rationale.trim())}
+                            >
                                 <Icon name="send" />
                                 {sending ? 'Sending…' : `Approve and send to ${formatCount(recipients)} employees`}
                             </button>
                         )}
                         {error && <p className="error-text">{error}</p>}
+                        {!decision && !record && (
+                            <p className={recordError ? 'error-text' : 'small muted card-foot'}>
+                                {recordError
+                                    ? `The decision log is unavailable, so nothing can be released: ${recordError}`
+                                    : 'Opening the decision record…'}
+                            </p>
+                        )}
                     </section>
 
                     <section className="card">
