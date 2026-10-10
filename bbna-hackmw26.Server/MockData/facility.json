@@ -1,0 +1,53 @@
+{
+  "id": "usda-ers-kc",
+  "recordPrefix": "ERSKC",
+  "name": "USDA Economic Research Service – Kansas City",
+  "shortName": "ERS Kansas City",
+  "type": "federal office",
+  "organization": "USDA Economic Research Service",
+  "address": {
+    "street": "805 Pennsylvania Ave",
+    "city": "Kansas City",
+    "state": "MO",
+    "zip": "64105"
+  },
+  "location": {
+    "latitude": 39.1045,
+    "longitude": -94.5909,
+    "county": "Jackson County, MO",
+    "nwsOffice": "EAX",
+    "nwsGridX": 43,
+    "nwsGridY": 51,
+    "nwsForecastZone": "MOZ037",
+    "nwsCountyZone": "MOC095"
+  },
+  "timeZone": "America/Chicago",
+  "timeZoneLabel": "CT",
+  "hours": {
+    "opens": "08:00",
+    "closes": "17:00",
+    "label": "8 AM–5 PM",
+    "days": [ "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" ]
+  },
+  "population": {
+    "employees": 75,
+    "essentialPersonnel": 10,
+    "teleworkEligible": 55
+  },
+  "hazards": [ "Ice storms", "Tornadoes", "Flooding" ],
+  "essentialRoles": [
+    "Facility manager",
+    "IT operations (3)",
+    "Security liaison (2)",
+    "Data release coordinator (2)",
+    "Building engineer (2)"
+  ],
+  "decisionSchedule": [
+    { "kind": "assessment", "time": "04:30", "title": "Automated assessment", "detail": "NWS and MoDOT feeds captured" },
+    { "kind": "decision", "time": "05:00", "title": "Decision due", "detail": "Manager approval required" },
+    { "kind": "notify", "time": "05:30", "title": "Notification target", "detail": "SMS, voice, and email" },
+    { "kind": "commute", "time": "06:30", "title": "Earliest commutes begin", "detail": "Essential and early-shift employees" },
+    { "kind": "open", "time": "08:00", "title": "Office opens", "detail": "If posture is unchanged" }
+  ],
+  "dataNote": "Real USDA office address. Employee counts, staffing categories, and operating hours are fictional demo values."
+}

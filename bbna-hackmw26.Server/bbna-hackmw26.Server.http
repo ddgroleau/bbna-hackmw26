@@ -12,6 +12,7 @@ Accept: application/json
 ###
 
 GET {{bbna_hackmw26.Server_HostAddress}}/api/weather/current
+GET {{bbna_hackmw26.Server_HostAddress}}/api/situation?scenario=winter-storm
 Accept: application/json
 
 ###

@@ -1,0 +1,27 @@
+{
+  "normal": {
+    "teleworkReady": "OFFICE OPEN — ERS Kansas City\n\nThe office is open on a normal schedule on {day}. Follow your regular telework or in-office schedule.\n\nPlease confirm receipt.",
+    "onsite": "OFFICE OPEN — ERS Kansas City\n\nThe office is open on a normal schedule on {day}. Report at your regular time.\n\nPlease confirm receipt.",
+    "essential": "OFFICE OPEN — ERS Kansas City\n\nThe office is open on a normal schedule on {day}. Essential personnel report at their regular time.\n\nPlease confirm receipt."
+  },
+  "delay": {
+    "teleworkReady": "DELAYED ARRIVAL — ERS Kansas City\n\nBecause of icy roads, the office opens 2 hours late on {day}. If you are scheduled in the office, arrive by 10:00 AM or telework for the full day. If you are teleworking, start at your normal time.\n\nYour supervisor will send any change by 7:00 AM. Please confirm receipt.",
+    "onsite": "DELAYED ARRIVAL — ERS Kansas City\n\nBecause of icy roads, the office opens 2 hours late on {day}. Arrive by 10:00 AM. Time before your adjusted arrival is covered by weather and safety leave.\n\nYour supervisor will send any change by 7:00 AM. Please confirm receipt.",
+    "essential": "DELAYED ARRIVAL — ESSENTIAL PERSONNEL — ERS Kansas City\n\nThe office opens 2 hours late on {day} because of icy roads. Essential personnel report at your normal time. Use treated arterials and allow extra travel time. Call the facility manager if you cannot travel safely.\n\nPlease confirm receipt."
+  },
+  "early_dismissal": {
+    "teleworkReady": "EARLY DEPARTURE — ERS Kansas City\n\nThe office opens on time on {day} and closes at 1:00 PM ahead of heavy snow. Leave the building by 1:00 PM and continue working by telework for the rest of the day. Take your laptop home.\n\nPlease confirm receipt.",
+    "onsite": "EARLY DEPARTURE — ERS Kansas City\n\nThe office opens on time on {day} and closes at 1:00 PM ahead of heavy snow. Leave the building by 1:00 PM. Time after your release is covered by weather and safety leave.\n\nPlease confirm receipt.",
+    "essential": "EARLY DEPARTURE — ESSENTIAL PERSONNEL — ERS Kansas City\n\nThe office closes to other employees at 1:00 PM on {day} ahead of heavy snow. Essential personnel remain until the building is secured, then leave by 2:00 PM. The facility manager will confirm by voice call.\n\nPlease confirm receipt."
+  },
+  "telework": {
+    "teleworkReady": "UNSCHEDULED TELEWORK — ERS Kansas City\n\nThe office is open on {day}, but dangerous wind chills are expected during the morning commute. You may telework without prior approval or take unscheduled leave. Tell your supervisor which you choose by 8:00 AM.\n\nPlease confirm receipt.",
+    "onsite": "UNSCHEDULED LEAVE OPTION — ERS Kansas City\n\nThe office is open on {day}, but dangerous wind chills are expected during the morning commute. You may report at your normal time or take unscheduled leave. Tell your supervisor which you choose by 8:00 AM.\n\nPlease confirm receipt.",
+    "essential": "OFFICE OPEN — ESSENTIAL PERSONNEL — ERS Kansas City\n\nThe office is open on {day} with unscheduled telework for other employees because of dangerous wind chills. Essential personnel report at your normal time. Limit time outdoors and dress for frostbite risk.\n\nPlease confirm receipt."
+  },
+  "closure": {
+    "teleworkReady": "OFFICE CLOSED — ERS Kansas City\n\nThe office is closed on {day} because of a winter storm and hazardous roads. Do not travel to the building. Telework-ready employees are expected to telework for the full day unless you request leave.\n\nThe next update will be sent by 4:00 PM. Please confirm receipt.",
+    "onsite": "OFFICE CLOSED — ERS Kansas City\n\nThe office is closed on {day} because of a winter storm and hazardous roads. Do not travel to the building. You will receive weather and safety leave for the day.\n\nThe next update will be sent by 4:00 PM. Please confirm receipt.",
+    "essential": "OFFICE CLOSED — ESSENTIAL PERSONNEL — ERS Kansas City\n\nThe office is closed to other employees on {day} because of a winter storm. Essential personnel will be contacted by voice call with reporting instructions. Do not travel until you have spoken with the facility manager.\n\nThe next update will be sent by 4:00 PM. Please confirm receipt."
+  }
+}

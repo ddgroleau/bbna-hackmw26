@@ -1,0 +1,37 @@
+{
+  "id": "clear",
+  "label": "Clear day (normal)",
+  "recommendation": {
+    "posture": "normal",
+    "level": "none",
+    "confidence": 95,
+    "thresholdSummary": "No operating threshold crossed",
+    "explanation": "No active NWS alert or operating threshold supports a change in posture. Roads are clear and wind chills stay well above the commute cutoff, so the office can run on its normal schedule.",
+    "whatCouldChange": "A new NWS advisory or warning, forecast escalation, or a road report below clear.",
+    "triggers": [
+      { "rule": "Active NWS alerts", "observed": "None", "threshold": "Advisory or higher", "crossed": false },
+      { "rule": "Snow by 8 AM", "observed": "0 in", "threshold": "≥ 3 in", "crossed": false },
+      { "rule": "Wind chill at commute hours", "observed": "31°F", "threshold": "≤ −20°F", "crossed": false }
+    ],
+    "alternatives": [
+      { "posture": "delay", "note": "Not supported: no overnight ice or snow." },
+      { "posture": "closure", "note": "Not supported: no warning-level hazard." }
+    ]
+  },
+  "weather": {
+    "alerts": [],
+    "current": {
+      "conditions": "Clear", "temperatureF": 38, "windChillF": 33, "windDirection": "W",
+      "windSpeedMph": 7, "windGustMph": 12, "humidityPct": 58, "visibilityMi": 10
+    },
+    "forecast": [
+      { "period": "Overnight", "window": "12–5 AM", "shortForecast": "Clear", "temperatureF": 34, "windChillF": 29, "windDirection": "W", "windSpeedMph": 6, "windGustMph": 10, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 },
+      { "period": "Morning commute", "window": "5–8 AM", "shortForecast": "Sunny", "temperatureF": 36, "windChillF": 31, "windDirection": "W", "windSpeedMph": 7, "windGustMph": 12, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 },
+      { "period": "Workday", "window": "8 AM–4 PM", "shortForecast": "Sunny", "temperatureF": 54, "windChillF": null, "windDirection": "SW", "windSpeedMph": 9, "windGustMph": 16, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening commute", "window": "4–6 PM", "shortForecast": "Sunny", "temperatureF": 53, "windChillF": null, "windDirection": "SW", "windSpeedMph": 9, "windGustMph": 15, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening", "window": "6–10 PM", "shortForecast": "Mostly clear", "temperatureF": 45, "windChillF": null, "windDirection": "S", "windSpeedMph": 6, "windGustMph": 10, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 }
+    ],
+    "totals": { "snowIn": 0, "iceIn": 0, "minWindChillF": 29, "maxGustMph": 16 },
+    "roads": { "status": "Clear", "detail": "All monitored routes near the office report clear pavement." }
+  }
+}
