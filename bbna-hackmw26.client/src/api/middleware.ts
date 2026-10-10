@@ -62,13 +62,5 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     return true;
   }
 
-  if (url.startsWith('/api')) {
-    sendJson(res, 404, { 
-      success: false, 
-      error: 'Endpoint not found' 
-    } as ApiResponse);
-    return true;
-  }
-
   return false;
 }
