@@ -176,7 +176,10 @@ function App() {
                     {TABS.map(item => (
                         <button key={item.id} aria-current={tab === item.id ? 'page' : undefined} onClick={() => selectTab(item.id)}>
                             {item.label}
-                            {item.id === 'notifications' && <span className="badge">{people.staff.recipients}</span>}
+                            {/* Pending recipients until the package is sent, then a check so the tab no longer reads as unsent. */}
+                            {item.id === 'notifications' && (decision
+                                ? <span className="badge badge-sent" aria-label="Sent"><Icon name="check" size={14} /></span>
+                                : <span className="badge">{people.staff.recipients}</span>)}
                         </button>
                     ))}
                 </nav>
