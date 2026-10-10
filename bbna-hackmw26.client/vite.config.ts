@@ -68,7 +68,7 @@ function apiPlugin() {
           }
         } catch (err) {
           console.error("❌ API error:", err);
-          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.writeHead(500, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "Internal server error" }));
         }
       });
@@ -87,6 +87,10 @@ export default defineConfig({
   server: {
     proxy: {
       "^/weatherforecast": {
+        target,
+        secure: false,
+      },
+      "^/api": {
         target,
         secure: false,
       },

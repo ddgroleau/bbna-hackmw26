@@ -1,0 +1,61 @@
+{
+  "rulesetVersion": "0.2-demo",
+  "dataNote": "Illustrative demo thresholds, not adopted agency policy.",
+  "levels": [
+    {
+      "level": "Advisory",
+      "posture": "normal",
+      "postureLabel": "Monitor / normal",
+      "trigger": "NWS advisory in effect, snow 1–2.9 in, or wind chill −1 to −9°F",
+      "basis": "NWS CAP severity; agency occupant emergency plan"
+    },
+    {
+      "level": "Action",
+      "posture": "delay",
+      "postureLabel": "Delayed arrival (2 hours)",
+      "trigger": "Ice ≥ 0.05 in or snow 3–5.9 in ending before 7 AM, with roads improving by 10 AM",
+      "basis": "MoDOT road-condition categories; OPM delayed-arrival status"
+    },
+    {
+      "level": "Action",
+      "posture": "early_dismissal",
+      "postureLabel": "Early departure",
+      "trigger": "Warning-level hazard starting during office hours: ≥ 2 in snow or any ice before 5 PM",
+      "basis": "NWS warning onset time; evening commute window"
+    },
+    {
+      "level": "Action",
+      "posture": "telework",
+      "postureLabel": "Unscheduled telework",
+      "trigger": "Wind chill ≤ −20°F during the morning commute while roads stay passable",
+      "basis": "NWS cold-weather warning criteria; OPM unscheduled leave and telework option"
+    },
+    {
+      "level": "Critical",
+      "posture": "closure",
+      "postureLabel": "Office closed",
+      "trigger": "NWS Winter Storm, Ice Storm, or Blizzard Warning through the workday, snow ≥ 6 in, ice ≥ 0.25 in, or roads covered",
+      "basis": "NWS warning taxonomy; OPM closure status; agency continuity plan"
+    }
+  ],
+  "sources": [
+    {
+      "owner": "NWS",
+      "title": "CAP alert fields",
+      "detail": "Severity, certainty, and urgency provide structured, nationally consistent hazard screening.",
+      "reviewed": "Sep 2026"
+    },
+    {
+      "owner": "MoDOT",
+      "title": "Road-condition categories",
+      "detail": "Clear, partly covered, and covered road reports decide whether employees can commute safely.",
+      "reviewed": "Aug 2026"
+    },
+    {
+      "owner": "OPM",
+      "title": "Dismissal and closure procedures",
+      "detail": "Operating statuses, telework expectations, and weather and safety leave follow governmentwide guidance.",
+      "reviewed": "Oct 2026"
+    }
+  ]
+}

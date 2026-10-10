@@ -1,0 +1,44 @@
+{
+  "id": "morning-ice",
+  "label": "Morning ice (delayed arrival)",
+  "recommendation": {
+    "posture": "delay",
+    "level": "action",
+    "confidence": 74,
+    "thresholdSummary": "Action threshold crossed: 0.06 in of ice before the morning commute",
+    "explanation": "Freezing drizzle overnight leaves a light glaze on bridges and untreated side streets during the morning commute. Temperatures climb above freezing by mid-morning and treated arterials are expected to be clear by 9 AM, so a 2-hour delayed arrival avoids the icy window without losing the workday.",
+    "whatCouldChange": "Ice totals reaching 0.25 in, the advisory being upgraded to an Ice Storm Warning, or temperatures staying below freezing past 10 AM.",
+    "triggers": [
+      { "rule": "Ice before the commute", "observed": "0.06 in", "threshold": "≥ 0.05 in", "crossed": true },
+      { "rule": "Road condition", "observed": "Partly covered, improving by 9 AM", "threshold": "Partly covered", "crossed": true },
+      { "rule": "Ice for closure", "observed": "0.06 in", "threshold": "≥ 0.25 in", "crossed": false }
+    ],
+    "alternatives": [
+      { "posture": "normal", "note": "Puts 19 on-site and essential employees on glazed bridges at 7 AM." },
+      { "posture": "telework", "note": "Reasonable if the office prefers no one commute before noon." },
+      { "posture": "closure", "note": "Not supported: ice ends by 8 AM and roads recover." }
+    ]
+  },
+  "weather": {
+    "alerts": [
+      {
+        "event": "Winter Weather Advisory", "severity": "Moderate", "certainty": "Likely", "urgency": "Expected",
+        "timing": "Until 8 AM", "area": "Jackson County, MO",
+        "headline": "Freezing drizzle with ice accumulation up to a tenth of an inch. Slippery bridges and overpasses."
+      }
+    ],
+    "current": {
+      "conditions": "Freezing drizzle", "temperatureF": 30, "windChillF": 22, "windDirection": "NE",
+      "windSpeedMph": 9, "windGustMph": 15, "humidityPct": 94, "visibilityMi": 4
+    },
+    "forecast": [
+      { "period": "Overnight", "window": "12–5 AM", "shortForecast": "Freezing drizzle", "temperatureF": 30, "windChillF": 22, "windDirection": "NE", "windSpeedMph": 9, "windGustMph": 15, "precipChancePct": 80, "snowIn": 0, "iceIn": 0.04 },
+      { "period": "Morning commute", "window": "5–8 AM", "shortForecast": "Freezing drizzle ending", "temperatureF": 31, "windChillF": 24, "windDirection": "NE", "windSpeedMph": 8, "windGustMph": 14, "precipChancePct": 60, "snowIn": 0, "iceIn": 0.02 },
+      { "period": "Workday", "window": "8 AM–4 PM", "shortForecast": "Cloudy", "temperatureF": 40, "windChillF": 34, "windDirection": "E", "windSpeedMph": 7, "windGustMph": 12, "precipChancePct": 20, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening commute", "window": "4–6 PM", "shortForecast": "Mostly cloudy", "temperatureF": 41, "windChillF": null, "windDirection": "E", "windSpeedMph": 6, "windGustMph": 10, "precipChancePct": 10, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening", "window": "6–10 PM", "shortForecast": "Cloudy", "temperatureF": 37, "windChillF": 32, "windDirection": "SE", "windSpeedMph": 6, "windGustMph": 10, "precipChancePct": 10, "snowIn": 0, "iceIn": 0 }
+    ],
+    "totals": { "snowIn": 0, "iceIn": 0.06, "minWindChillF": 22, "maxGustMph": 15 },
+    "roads": { "status": "Partly covered", "detail": "Glaze on bridges, overpasses, and untreated side streets. Treated arterials expected clear by 9 AM." }
+  }
+}
