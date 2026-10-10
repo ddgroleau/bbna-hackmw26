@@ -245,6 +245,10 @@ textarea.rationale { margin-bottom: 18px; }
 .events time { display: block; font-size: 13px; color: var(--blue); }
 .events strong { display: block; font-size: 17px; }
 .events div span { font-size: 14px; color: var(--blue); }
+.log-id { display: block; padding: 0; text-align: left; white-space: nowrap; }
+.log-id[aria-current] { color: var(--ink); }
+.log-id + span { display: block; font-size: 12px; color: var(--blue); }
+tr[aria-selected="true"] td { background: #f8fafb; }
 .source-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .source-grid .card { display: flex; flex-direction: column; gap: 8px; }
 .source-grid .card-foot { margin-top: auto; border: 0; padding-top: 18px; }

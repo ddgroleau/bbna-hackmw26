@@ -229,6 +229,13 @@ async function createDecisionRecord(situation: Situation): Promise<DecisionRecor
     return response.json();
 }
 
+// Every record in the log with its events and integrity check, newest first.
+export async function fetchDecisionLog(): Promise<DecisionRecordDetail[]> {
+    const response = await fetch('/api/decisions');
+    if (!response.ok) throw await failure(response, 'the decision log');
+    return response.json();
+}
+
 const pendingRecords = new Map<string, Promise<DecisionRecordDetail>>();
 
 // Reuses the open record when it is still waiting on the same recommendation, so refreshing the
@@ -242,9 +249,7 @@ export function ensureDecisionRecord(situation: Situation): Promise<DecisionReco
     let pending = pendingRecords.get(key);
     if (!pending) {
         pending = (async () => {
-            const response = await fetch('/api/decisions');
-            if (!response.ok) throw await failure(response, 'the decision log');
-            const [latest]: DecisionRecordDetail[] = await response.json();
+            const [latest] = await fetchDecisionLog();
             if (latest?.record.status === 'AwaitingDecision' && latest.record.recommendedPosture === posture
                 && latest.record.rulesetVersion === rulesetVersion) {
                 return latest;

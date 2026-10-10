@@ -168,7 +168,7 @@ function App() {
                             onRecorded={setRecord}
                         />
                     )}
-                    {tab === 'record' && <DecisionRecordPage situation={situation} decision={decision} record={record} recordError={recordError} />}
+                    {tab === 'record' && <DecisionRecordPage current={record} />}
                     {tab === 'thresholds' && <ThresholdsPage situation={situation} />}
                 </main>
             </div>
