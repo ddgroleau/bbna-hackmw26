@@ -44,9 +44,11 @@ function apiPlugin() {
         name: 'api-plugin',
         configureServer(viteServer: any) {
             // Add middleware BEFORE other middlewares
-            viteServer.middlewares.use(express.json());
+            viteServer.middlewares.use('/api/analyze', express.json());
             viteServer.middlewares.use((req: any, res: any, next: any) => {
-                if (!req.url.startsWith('/api')) {
+                // Only /api/analyze is served here. Every other /api route falls through
+                // to the proxy below and is answered by the ASP.NET server.
+                if (!req.url.startsWith('/api/analyze')) {
                     return next();
                 }
 
@@ -104,6 +106,10 @@ export default defineConfig({
     server: {
         proxy: {
             '^/weatherforecast': {
+                target,
+                secure: false
+            },
+            '^/api': {
                 target,
                 secure: false
             }
