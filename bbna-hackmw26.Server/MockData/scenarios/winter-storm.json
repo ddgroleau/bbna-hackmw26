@@ -5,18 +5,18 @@
     "posture": "closure",
     "level": "critical",
     "confidence": 88,
-    "thresholdSummary": "Critical threshold crossed: Winter Storm Warning with 7.5 in of snow",
-    "explanation": "A Winter Storm Warning runs through the whole school day. 5.5 in of snow falls before first bell with 7.5 in by evening, and roads near the school are already reported as covered. Wind chills drop to −4°F during bus pull-out. Bus routes cannot run safely in either direction, so a full closure is the supported posture.",
-    "whatCouldChange": "Snow totals dropping below 6 in with the warning ending before 6 AM would support a delayed start.",
+    "thresholdSummary": "Critical threshold crossed: Winter Storm Warning with icy, snow-covered roads",
+    "explanation": "A Winter Storm Warning runs through the whole workday. Freezing rain overnight left a glaze under 4 in of new snow, and MoDOT reports covered, icy pavement on I-35, I-70, and downtown arterials. 6.5 in of snow is forecast by evening, so neither the morning nor the evening commute can be made safely. A full closure is the supported posture; 51 telework-ready employees can keep working remotely.",
+    "whatCouldChange": "Snow totals dropping below 6 in with the warning ending before 7 AM and roads improving by 10 AM would support a delayed arrival.",
     "triggers": [
-      { "rule": "Active NWS alerts", "observed": "Winter Storm Warning until 6 PM", "threshold": "Warning through the school day", "crossed": true },
-      { "rule": "Storm-total snow", "observed": "7.5 in", "threshold": "≥ 6 in", "crossed": true },
-      { "rule": "Road condition", "observed": "Covered", "threshold": "Covered", "crossed": true },
-      { "rule": "Wind chill at bus-stop hours", "observed": "−4°F", "threshold": "≤ −20°F", "crossed": false }
+      { "rule": "Active NWS alerts", "observed": "Winter Storm Warning until 6 PM", "threshold": "Warning through the workday", "crossed": true },
+      { "rule": "Storm-total snow", "observed": "6.5 in", "threshold": "≥ 6 in", "crossed": true },
+      { "rule": "Road condition", "observed": "Covered, icy", "threshold": "Covered", "crossed": true },
+      { "rule": "Storm-total ice", "observed": "0.15 in", "threshold": "≥ 0.25 in", "crossed": false }
     ],
     "alternatives": [
-      { "posture": "telework", "note": "Keeps instruction going if the district wants to save a make-up day." },
-      { "posture": "delay", "note": "Not supported: snow continues through the school day." },
+      { "posture": "telework", "note": "Leaves 9 on-site-only employees choosing between leave and a dangerous commute." },
+      { "posture": "delay", "note": "Not supported: snow continues through the workday." },
       { "posture": "normal", "note": "Not supported: roads are covered and the warning is active." }
     ]
   },
@@ -25,21 +25,21 @@
       {
         "event": "Winter Storm Warning", "severity": "Severe", "certainty": "Likely", "urgency": "Expected",
         "timing": "Until 6 PM", "area": "Jackson County, MO",
-        "headline": "Heavy snow with total accumulations of 6 to 9 inches and gusts to 35 mph. Travel will be very difficult to impossible for the morning commute."
+        "headline": "Mixed precipitation. Ice accumulations up to two tenths of an inch, then heavy snow with total accumulations of 5 to 8 inches. Travel will be very difficult to impossible for the morning commute."
       }
     ],
     "current": {
-      "conditions": "Heavy snow", "temperatureF": 19, "windChillF": 4, "windDirection": "N",
-      "windSpeedMph": 16, "windGustMph": 28, "humidityPct": 88, "visibilityMi": 0.5
+      "conditions": "Snow, ice pellets", "temperatureF": 24, "windChillF": 12, "windDirection": "N",
+      "windSpeedMph": 14, "windGustMph": 25, "humidityPct": 91, "visibilityMi": 0.75
     },
     "forecast": [
-      { "period": "Overnight", "window": "12–5 AM", "shortForecast": "Heavy snow", "temperatureF": 18, "windChillF": 2, "windDirection": "N", "windSpeedMph": 18, "windGustMph": 30, "precipChancePct": 100, "snowIn": 3.5, "iceIn": 0 },
-      { "period": "Morning commute", "window": "5–8 AM", "shortForecast": "Snow and blowing snow", "temperatureF": 17, "windChillF": -4, "windDirection": "N", "windSpeedMph": 20, "windGustMph": 32, "precipChancePct": 100, "snowIn": 2.0, "iceIn": 0 },
-      { "period": "School day", "window": "8 AM–2 PM", "shortForecast": "Snow", "temperatureF": 20, "windChillF": 5, "windDirection": "N", "windSpeedMph": 16, "windGustMph": 27, "precipChancePct": 90, "snowIn": 1.5, "iceIn": 0 },
-      { "period": "Dismissal", "window": "2–4 PM", "shortForecast": "Light snow", "temperatureF": 21, "windChillF": 8, "windDirection": "NW", "windSpeedMph": 13, "windGustMph": 22, "precipChancePct": 60, "snowIn": 0.5, "iceIn": 0 },
-      { "period": "Evening", "window": "4–9 PM", "shortForecast": "Flurries", "temperatureF": 16, "windChillF": 3, "windDirection": "NW", "windSpeedMph": 10, "windGustMph": 17, "precipChancePct": 20, "snowIn": 0, "iceIn": 0 }
+      { "period": "Overnight", "window": "12–5 AM", "shortForecast": "Freezing rain changing to snow", "temperatureF": 28, "windChillF": 18, "windDirection": "NE", "windSpeedMph": 12, "windGustMph": 22, "precipChancePct": 100, "snowIn": 2.5, "iceIn": 0.15 },
+      { "period": "Morning commute", "window": "5–8 AM", "shortForecast": "Heavy snow", "temperatureF": 23, "windChillF": 10, "windDirection": "N", "windSpeedMph": 16, "windGustMph": 27, "precipChancePct": 100, "snowIn": 1.5, "iceIn": 0 },
+      { "period": "Workday", "window": "8 AM–4 PM", "shortForecast": "Snow", "temperatureF": 22, "windChillF": 9, "windDirection": "N", "windSpeedMph": 15, "windGustMph": 26, "precipChancePct": 90, "snowIn": 2.0, "iceIn": 0 },
+      { "period": "Evening commute", "window": "4–6 PM", "shortForecast": "Light snow", "temperatureF": 21, "windChillF": 8, "windDirection": "NW", "windSpeedMph": 13, "windGustMph": 22, "precipChancePct": 60, "snowIn": 0.5, "iceIn": 0 },
+      { "period": "Evening", "window": "6–10 PM", "shortForecast": "Flurries", "temperatureF": 17, "windChillF": 4, "windDirection": "NW", "windSpeedMph": 10, "windGustMph": 17, "precipChancePct": 20, "snowIn": 0, "iceIn": 0 }
     ],
-    "totals": { "snowIn": 7.5, "iceIn": 0, "minWindChillF": -4, "maxGustMph": 32 },
-    "roads": { "status": "Covered", "detail": "Snow-covered pavement on I-70, US-71, and city arterials near the school. Plows are working priority routes only." }
+    "totals": { "snowIn": 6.5, "iceIn": 0.15, "minWindChillF": 4, "maxGustMph": 27 },
+    "roads": { "status": "Covered", "detail": "Ice under snow-covered pavement on I-35, I-70, US-71, and downtown arterials near the office. Plows are working priority routes only." }
   }
 }

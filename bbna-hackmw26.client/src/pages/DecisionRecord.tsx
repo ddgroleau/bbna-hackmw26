@@ -45,7 +45,7 @@ export function DecisionRecordPage({ situation, decision }: { situation: Situati
                 icon: 'send',
                 when: stamp(decision.sentAt),
                 title: 'Notifications released (simulated)',
-                detail: `${formatCount(decision.staffRecipients)} staff and ${formatCount(decision.familyContacts)} family contacts through ${decision.channels.join(', ')}.`,
+                detail: `${formatCount(decision.recipients)} employees, including ${formatCount(decision.essentialRecipients)} essential personnel, through ${decision.channels.join(', ')}.`,
             },
         );
     } else {

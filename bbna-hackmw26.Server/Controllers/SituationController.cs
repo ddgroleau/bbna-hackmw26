@@ -68,8 +68,8 @@ namespace bbna_hackmw26.Server.Controllers
                 status = "simulated",
                 request.Posture,
                 request.Channels,
-                request.StaffRecipients,
-                request.FamilyContacts,
+                request.Recipients,
+                request.EssentialRecipients,
                 sentAt = DateTimeOffset.UtcNow,
             });
         }
@@ -107,13 +107,14 @@ namespace bbna_hackmw26.Server.Controllers
                 steps.Add(copy);
             }
 
+            var prefix = facility["recordPrefix"]!.GetValue<string>();
             var dayLabel = day == today ? "Today"
                 : day == today.AddDays(1) ? "Tomorrow"
                 : day.DayOfWeek.ToString();
 
             return new JsonObject
             {
-                ["recordId"] = $"LCP-{day:yyyy-MMdd}-{decisionDue:HHmm}",
+                ["recordId"] = $"{prefix}-{day:yyyy-MMdd}-{decisionDue:HHmm}",
                 ["operatingDate"] = day.ToString("yyyy-MM-dd"),
                 ["operatingDayLabel"] = day.ToString("dddd, MMMM d", CultureInfo.InvariantCulture),
                 ["dayLabel"] = dayLabel,
@@ -123,5 +124,5 @@ namespace bbna_hackmw26.Server.Controllers
         }
     }
 
-    public record NotifyRequest(string Posture, string[] Channels, int StaffRecipients, int FamilyContacts);
+    public record NotifyRequest(string Posture, string[] Channels, int Recipients, int EssentialRecipients);
 }

@@ -1,34 +1,33 @@
 {
-  "dataNote": "Fictional people and estimated counts for a demo.",
-  "resolvedAgainst": "Roster resolved against today's staff attendance file.",
+  "dataNote": "Fictional people and counts for a demo.",
+  "resolvedAgainst": "Roster resolved against today's leave and travel records.",
   "staff": {
-    "assigned": 96,
-    "recipients": 89,
-    "excluded": 7,
-    "essential": 8,
+    "assigned": 75,
+    "recipients": 70,
+    "excluded": 5,
+    "essential": 10,
     "steps": [
-      { "label": "96 staff assigned to building", "detail": "District HR roster", "delta": 96 },
+      { "label": "75 employees assigned to office", "detail": "Agency HR roster", "delta": 75 },
       { "label": "4 on approved leave", "detail": "No commute impact", "delta": -4 },
-      { "label": "3 at district training", "detail": "Different duty location", "delta": -3 },
-      { "label": "89 final staff recipients", "detail": "8 get the essential-staff addendum", "delta": 89, "final": true }
+      { "label": "1 on official travel", "detail": "Different duty location", "delta": -1 },
+      { "label": "70 final recipients", "detail": "Each gets the message for their assignment", "delta": 70, "final": true }
     ]
   },
-  "families": {
-    "students": 1010,
-    "guardianContacts": 1640,
-    "busRiders": 610,
-    "busRoutes": 18
+  "audiences": {
+    "teleworkReady": 51,
+    "onsite": 9,
+    "essential": 10
   },
   "accessibility": {
     "title": "Accessibility routing",
-    "detail": "2 staff receive text-first messages and TTY-compatible email. 214 family contacts receive the Spanish-language version."
+    "detail": "2 employees receive text-first messages and Section 508–compliant email. 1 employee receives voice messages through a relay service."
   },
   "sample": [
-    { "name": "Renee Whitfield", "role": "Principal", "logic": "Essential staff", "routing": [ "SMS", "Voice", "Email" ], "included": true },
-    { "name": "Marcus Odom", "role": "Head Custodian", "logic": "Essential staff", "routing": [ "SMS", "Voice", "Email" ], "included": true },
-    { "name": "Priya Natarajan", "role": "Math Teacher", "logic": "Assigned on-site", "routing": [ "SMS", "Email" ], "included": true },
-    { "name": "Aisha Coleman", "role": "Cafeteria Manager", "logic": "Essential staff", "routing": [ "SMS", "Voice", "Email" ], "included": true },
-    { "name": "Hannah Lindqvist", "role": "School Counselor", "logic": "Approved leave", "routing": [], "included": false },
-    { "name": "Tom Beckett", "role": "Science Teacher", "logic": "At district training", "routing": [], "included": false }
+    { "name": "Denise Harlan", "role": "Facility Manager", "logic": "Essential personnel", "routing": [ "SMS", "Voice", "Email" ], "included": true },
+    { "name": "Victor Ruiz", "role": "IT Operations Specialist", "logic": "Essential personnel", "routing": [ "SMS", "Voice", "Email" ], "included": true },
+    { "name": "Priya Natarajan", "role": "Agricultural Economist", "logic": "Telework-ready", "routing": [ "SMS", "Email" ], "included": true },
+    { "name": "Gloria Benton", "role": "Administrative Officer", "logic": "On-site only", "routing": [ "SMS", "Email" ], "included": true },
+    { "name": "Hannah Lindqvist", "role": "Research Economist", "logic": "Approved leave", "routing": [], "included": false },
+    { "name": "Tom Beckett", "role": "Statistician", "logic": "On official travel", "routing": [], "included": false }
   ]
 }

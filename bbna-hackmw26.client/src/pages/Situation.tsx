@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Posture, Situation } from '../api';
 import { Icon, PageHead } from '../components';
-import { POSTURES, formatCount, formatCountdown, formatDateTime, formatTemp, formatTime, useNow } from '../format';
+import { AUDIENCES, AUDIENCE_ORDER, POSTURES, formatCount, formatCountdown, formatDateTime, formatTemp, formatTime, useNow } from '../format';
 
 interface Props {
     situation: Situation;
@@ -162,7 +162,7 @@ function DecisionWindowCard({ situation }: { situation: Situation }) {
 }
 
 function PeopleImpactCard({ situation }: { situation: Situation }) {
-    const { staff, families } = situation.people;
+    const { staff, audiences } = situation.people;
     const includedShare = (staff.recipients / staff.assigned) * 100;
 
     return (
@@ -172,8 +172,8 @@ function PeopleImpactCard({ situation }: { situation: Situation }) {
                 <Icon name="users" size={24} />
             </div>
 
-            <p className="big-count"><strong>{formatCount(staff.recipients)}</strong> staff to notify</p>
-            <div className="meter" role="img" aria-label={`${staff.recipients} of ${staff.assigned} staff included`}>
+            <p className="big-count"><strong>{formatCount(staff.recipients)}</strong> employees to notify</p>
+            <div className="meter" role="img" aria-label={`${staff.recipients} of ${staff.assigned} employees included`}>
                 <span style={{ width: `${includedShare}%` }} />
             </div>
             <p className="meter-key">
@@ -182,13 +182,13 @@ function PeopleImpactCard({ situation }: { situation: Situation }) {
             </p>
 
             <dl className="facts compact">
-                <div><dt>Students affected</dt><dd>{formatCount(families.students)}</dd></div>
-                <div><dt>Family contacts</dt><dd>{formatCount(families.guardianContacts)}</dd></div>
-                <div><dt>Bus riders</dt><dd>{formatCount(families.busRiders)} on {families.busRoutes} routes</dd></div>
+                {AUDIENCE_ORDER.map(id => (
+                    <div key={id}><dt>{AUDIENCES[id]}</dt><dd>{formatCount(audiences[id])}</dd></div>
+                ))}
             </dl>
 
             <p className="small accent card-foot">
-                {staff.essential} essential staff receive separate reporting instructions.
+                Each group receives instructions for its assignment. {staff.essential} essential personnel also get a voice call.
             </p>
         </section>
     );
