@@ -1,0 +1,642 @@
+{
+    "policy_id": "readystatus-weather-operating-policy",
+    "policy_version": "1.0.0",
+    "title": "ReadyStatus Weather-Driven Facility Operating Decision Matrix",
+    "status_model": {
+        "NORMAL": "Facility operates on its regular schedule.",
+        "DELAY": "Delay on-site reporting or facility opening until a specified time.",
+        "EARLY_DISMISSAL": "Release employees before the normal end of the workday, only when departure is considered safe.",
+        "TELEWORK": "Eligible employees work remotely instead of reporting on-site, subject to agency policy.",
+        "CLOSURE": "Facility is closed to normal on-site operations."
+    },
+    "purpose": "Provide transparent, source-backed prototype rules to help an LLM explain evidence and help a deterministic policy engine recommend an operating status. This is not an official USDA policy and does not replace agency emergency procedures or authorized manager decisions.",
+    "decision_principles": [
+        "Treat official NWS alert types and fields as evidence; do not independently reinterpret an alert's severity as an automatic closure mandate unless an adopted local policy explicitly says so.",
+        "Distinguish official source criteria from ReadyStatus prototype mappings.",
+        "Use location, alert polygon, effective/expiration times, facility operating hours, and commute windows to determine relevance.",
+        "Verified immediate threats to life safety, facility safety, or critical access take precedence over generic numeric thresholds.",
+        "Do not recommend early dismissal when available evidence indicates that sending people onto roads would be unsafe.",
+        "Do not treat missing, stale, or conflicting data as evidence that conditions are safe.",
+        "The system recommends; an authorized human approves the operating status, except that emergency procedures may require immediate protective action.",
+        "One primary facility status is returned, but employee-specific telework, essential-personnel, and accommodation instructions are derived separately."
+    ],
+    "statuses": [
+        {
+            "value": "NORMAL",
+            "priority": 0,
+            "definition": "Regular facility schedule."
+        },
+        {
+            "value": "DELAY",
+            "priority": 1,
+            "definition": "Delayed on-site reporting/opening."
+        },
+        {
+            "value": "EARLY_DISMISSAL",
+            "priority": 2,
+            "definition": "Release before normal end of day when departure is safe."
+        },
+        {
+            "value": "TELEWORK",
+            "priority": 3,
+            "definition": "Remote work for eligible employees when facility operations or travel make on-site attendance inadvisable."
+        },
+        {
+            "value": "CLOSURE",
+            "priority": 4,
+            "definition": "Facility closed to normal on-site operations."
+        }
+    ],
+    "selection_logic": {
+        "note": "Do not blindly select the highest numeric status in every situation. EARLY_DISMISSAL and DELAY describe different time windows, and TELEWORK may be preferable to CLOSURE when the facility is safe but travel is not. Evaluate trigger timing, facility safety, travel safety, remote-work feasibility, and the agency's adopted policy.",
+        "ordered_checks": [
+            "If an immediate life-safety threat is verified, invoke applicable emergency procedures and recommend CLOSURE or the required protective action.",
+            "If the facility is unsafe or critical access is unavailable with no safe alternative, recommend CLOSURE unless emergency officials specify a different action.",
+            "If the facility is safe but travel is unsafe and remote work is feasible, recommend TELEWORK.",
+            "If conditions are expected to improve before travel is needed, consider DELAY.",
+            "If conditions are expected to worsen during the workday, consider EARLY_DISMISSAL only if departure is still safe.",
+            "If no relevant hazards or operational impacts are present, recommend NORMAL.",
+            "If evidence is insufficient or conflicting, return an uncertainty flag and request manager review; do not silently assume NORMAL."
+        ]
+    },
+    "rules": [
+        {
+            "rule_id": "BASE-001",
+            "hazard": "baseline",
+            "trigger": {
+                "all": [
+                    "no_relevant_active_nws_alert",
+                    "no_reported_critical_route_impacts",
+                    "facility_operational_and_safe"
+                ]
+            },
+            "recommended_status": "NORMAL",
+            "authority_type": "prototype_baseline",
+            "rationale": "No current evidence supports changing normal operations.",
+            "escalation_conditions": [],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-api"
+            ]
+        },
+        {
+            "rule_id": "FLOOD-001",
+            "hazard": "flood",
+            "trigger": {
+                "source": "NWS",
+                "field": "alert.event",
+                "operator": "equals",
+                "value": "Flash Flood Warning",
+                "and": [
+                    "alert_polygon_intersects_facility_or_critical_access_area",
+                    "alert_is_active"
+                ]
+            },
+            "recommended_status": "CLOSURE",
+            "condition": "Use CLOSURE when the facility or critical access is threatened; otherwise require urgent manager review and assess TELEWORK.",
+            "authority_type": "official_alert_with_prototype_mapping",
+            "rationale": "An active flash-flood warning near the facility or critical access requires urgent safety evaluation; the alert alone does not prove the building is inundated.",
+            "escalation_conditions": [
+                "confirmed_facility_inundation",
+                "official_evacuation_order",
+                "critical_access_route_flooded_or_closed"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-api",
+                "https://www.weather.gov/safety/flood"
+            ]
+        },
+        {
+            "rule_id": "FLOOD-002",
+            "hazard": "flood",
+            "trigger": {
+                "source": "DOT_or_authoritative_local_source",
+                "field": "critical_access_route.status",
+                "operator": "in",
+                "value": [
+                    "CLOSED",
+                    "FLOODED"
+                ],
+                "and": [
+                    "no_verified_safe_alternate_route"
+                ]
+            },
+            "recommended_status": "TELEWORK",
+            "condition": "Use CLOSURE instead if facility safety is compromised or normal on-site operation cannot be supported.",
+            "authority_type": "observed_condition_with_prototype_mapping",
+            "rationale": "A verified critical-route closure is direct evidence of access disruption. Do not infer all employees' routes are affected unless route data supports it.",
+            "escalation_conditions": [
+                "facility_unsafe",
+                "all_safe_access_unavailable",
+                "official_evacuation_order"
+            ],
+            "source_urls": [
+                "https://traveler.modot.org/mapv3/index.html",
+                "https://www.weather.gov/safety/flood"
+            ]
+        },
+        {
+            "rule_id": "FLOOD-003",
+            "hazard": "flood",
+            "trigger": {
+                "source": "NWS",
+                "field": "alert.event",
+                "operator": "in",
+                "value": [
+                    "Flood Watch",
+                    "Flood Advisory"
+                ],
+                "and": [
+                    "alert_is_active",
+                    "relevant_geographic_overlap"
+                ]
+            },
+            "recommended_status": "DELAY",
+            "condition": "Use NORMAL if the alert does not affect operating or commute windows and no other impact exists; use TELEWORK if travel is unsafe.",
+            "authority_type": "official_alert_with_prototype_mapping",
+            "rationale": "A watch/advisory indicates potential or localized flooding and should trigger assessment rather than automatic closure.",
+            "escalation_conditions": [
+                "observed_flooding_on_critical_route",
+                "facility_inundation",
+                "Flash Flood Warning"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-api",
+                "https://www.weather.gov/safety/flood"
+            ]
+        },
+        {
+            "rule_id": "RAIN-001",
+            "hazard": "heavy_rain",
+            "trigger": {
+                "source": "NWS_or_DOT",
+                "field": "alert_or_observation",
+                "operator": "in",
+                "value": [
+                    "Flood Advisory",
+                    "Flash Flood Warning",
+                    "critical_route_flooding_report"
+                ]
+            },
+            "recommended_status": "DELAY",
+            "condition": "Use TELEWORK or CLOSURE if critical routes or facility safety are compromised. Rainfall amount alone does not mandate closure.",
+            "authority_type": "official_alert_or_observation_with_prototype_mapping",
+            "rationale": "Rain impacts depend on drainage, terrain, soil saturation, and local conditions; use flood alerts and observed impacts rather than a universal rainfall cutoff.",
+            "escalation_conditions": [
+                "critical_route_flooded_or_closed",
+                "facility_inundation",
+                "official_evacuation_order"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/safety/flood",
+                "https://traveler.modot.org/mapv3/index.html"
+            ]
+        },
+        {
+            "rule_id": "SNOW-001",
+            "hazard": "snow",
+            "trigger": {
+                "source": "NWS",
+                "field": "alert.event",
+                "operator": "equals",
+                "value": "Winter Weather Advisory",
+                "and": [
+                    "active_during_commute_window",
+                    "relevant_geographic_overlap"
+                ]
+            },
+            "recommended_status": "DELAY",
+            "condition": "Use TELEWORK if travel is unsafe; NORMAL may remain appropriate when timing and observed conditions show no meaningful operational impact.",
+            "authority_type": "official_alert_with_prototype_mapping",
+            "rationale": "Local NWS criteria vary by forecast office. Use the active local alert and corroborating road conditions rather than applying a universal snow amount.",
+            "escalation_conditions": [
+                "Winter Storm Warning",
+                "critical_route_closed_or_impassable",
+                "facility_access_unsafe"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-alerts",
+                "https://www.weather.gov/eax/eaxwwacriteria2"
+            ]
+        },
+        {
+            "rule_id": "SNOW-002",
+            "hazard": "snow",
+            "trigger": {
+                "source": "NWS",
+                "field": "alert.event",
+                "operator": "equals",
+                "value": "Winter Storm Warning",
+                "and": [
+                    "active_during_commute_window",
+                    "relevant_geographic_overlap"
+                ]
+            },
+            "recommended_status": "DELAY",
+            "condition": "Escalate to TELEWORK or CLOSURE when current road/access impacts or facility safety warrant it.",
+            "authority_type": "official_alert_with_prototype_mapping",
+            "rationale": "A warning signals a higher-impact event, but it is not a universal facility-closure order.",
+            "escalation_conditions": [
+                "critical_route_closed_or_impassable",
+                "blizzard_conditions",
+                "facility_access_unsafe"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-alerts",
+                "https://www.weather.gov/eax/eaxwwacriteria2"
+            ]
+        },
+        {
+            "rule_id": "ICE-001",
+            "hazard": "ice_freezing_rain",
+            "trigger": {
+                "source": "NWS_or_DOT",
+                "field": "alert_or_road_condition",
+                "operator": "in",
+                "value": [
+                    "Ice Storm Warning",
+                    "verified_widespread_icy_or_impassable_roads"
+                ]
+            },
+            "recommended_status": "TELEWORK",
+            "condition": "Use DELAY if conditions are expected to improve before travel; use CLOSURE if the facility is unsafe or safe access cannot be maintained.",
+            "authority_type": "official_alert_or_observation_with_prototype_mapping",
+            "rationale": "Ice can create hazardous travel even with low precipitation totals; actual road impacts and local warning criteria govern.",
+            "escalation_conditions": [
+                "critical_route_closed",
+                "facility_unsafe",
+                "official_emergency_instruction"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-alerts",
+                "https://traveler.modot.org/mapv3/index.html"
+            ]
+        },
+        {
+            "rule_id": "WIND-001",
+            "hazard": "wind",
+            "trigger": {
+                "source": "NWS",
+                "field": "alert.event",
+                "operator": "in",
+                "value": [
+                    "Wind Advisory",
+                    "High Wind Warning"
+                ],
+                "and": [
+                    "relevant_geographic_overlap",
+                    "active_during_operating_or_commute_window"
+                ]
+            },
+            "recommended_status": "DELAY",
+            "condition": "Use TELEWORK if travel is unsafe; use CLOSURE if verified facility damage or immediate danger makes the site unsafe.",
+            "authority_type": "official_alert_with_prototype_mapping",
+            "rationale": "Local alert criteria are more defensible than a universal sustained-wind cutoff.",
+            "escalation_conditions": [
+                "confirmed_structural_damage",
+                "downed_power_lines_or_blocked_critical_route",
+                "official_emergency_instruction"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-alerts",
+                "https://www.weather.gov/safety/wind"
+            ]
+        },
+        {
+            "rule_id": "WIND-002",
+            "hazard": "wind",
+            "trigger": {
+                "source": "NWS_observation_or_forecast",
+                "field": "wind_gust_mph",
+                "operator": "greater_than_or_equal",
+                "value": 40
+            },
+            "recommended_status": "DELAY",
+            "condition": "Prototype review trigger only. Do not automatically close based on gust speed alone; confirm the applicable local NWS criterion and impacts.",
+            "authority_type": "prototype_numeric_review_threshold",
+            "rationale": "A configurable prototype threshold can trigger review, but is not an official nationwide closure threshold.",
+            "escalation_conditions": [
+                "active_high_wind_warning",
+                "facility_damage",
+                "critical_route_blocked"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/safety/wind"
+            ]
+        },
+        {
+            "rule_id": "THUNDER-001",
+            "hazard": "thunderstorm_severe",
+            "trigger": {
+                "source": "NWS",
+                "field": "alert.event",
+                "operator": "equals",
+                "value": "Severe Thunderstorm Warning",
+                "and": [
+                    "relevant_geographic_overlap",
+                    "active_during_commute_or_operating_window"
+                ]
+            },
+            "recommended_status": "DELAY",
+            "condition": "Use TELEWORK if commute conditions are unsafe; use CLOSURE or emergency protective action if the facility is threatened.",
+            "authority_type": "official_alert_with_prototype_mapping",
+            "rationale": "A warning indicates severe thunderstorm conditions; timing, route impacts, and facility exposure determine the operating response.",
+            "escalation_conditions": [
+                "confirmed_facility_damage",
+                "critical_route_blocked",
+                "official_emergency_instruction"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-alerts",
+                "https://www.weather.gov/safety/thunderstorm"
+            ]
+        },
+        {
+            "rule_id": "TORNADO-001",
+            "hazard": "tornado",
+            "trigger": {
+                "source": "NWS",
+                "field": "alert.event",
+                "operator": "equals",
+                "value": "Tornado Warning",
+                "and": [
+                    "alert_polygon_intersects_facility",
+                    "alert_is_active"
+                ]
+            },
+            "recommended_status": "CLOSURE",
+            "condition": "Immediate protective action may require sheltering in place; do not interpret CLOSURE as an instruction to send occupants onto unsafe roads.",
+            "authority_type": "official_alert_with_emergency_mapping",
+            "rationale": "A tornado warning overlapping the facility is a life-safety event. Follow the facility emergency plan and official instructions.",
+            "escalation_conditions": [
+                "always_invoke_applicable_emergency_procedures"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-alerts",
+                "https://www.weather.gov/safety/tornado"
+            ]
+        },
+        {
+            "rule_id": "LIGHTNING-001",
+            "hazard": "lightning",
+            "trigger": {
+                "source": "NWS_or_local_observation",
+                "field": "thunder_or_lightning_detected",
+                "operator": "equals",
+                "value": true
+            },
+            "recommended_status": "NORMAL",
+            "condition": "Keep safe indoor operations running if the facility is safe; suspend outdoor activity and move people to substantial shelter. This rule does not imply outdoor work is safe.",
+            "authority_type": "official_safety_guidance_with_limited_operating_mapping",
+            "rationale": "Lightning alone generally does not require closing a safe indoor facility. NWS guidance says to wait 30 minutes after the last thunder before resuming outdoor activities.",
+            "escalation_conditions": [
+                "facility_damage",
+                "fire_or_power_system_issue",
+                "official_emergency_instruction"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/safety/lightning"
+            ]
+        },
+        {
+            "rule_id": "FOG-001",
+            "hazard": "dense_fog",
+            "trigger": {
+                "source": "NWS",
+                "field": "alert.event",
+                "operator": "equals",
+                "value": "Dense Fog Advisory",
+                "and": [
+                    "active_during_commute_window",
+                    "relevant_geographic_overlap"
+                ]
+            },
+            "recommended_status": "DELAY",
+            "condition": "Use TELEWORK if visibility makes travel unsafe; otherwise consider NORMAL with monitoring.",
+            "authority_type": "official_alert_with_prototype_mapping",
+            "rationale": "Use the local advisory and observed visibility rather than an unverified universal closure cutoff.",
+            "escalation_conditions": [
+                "critical_route_closures",
+                "official_emergency_instruction"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-alerts",
+                "https://www.weather.gov/safety/fog"
+            ]
+        },
+        {
+            "rule_id": "HEAT-001",
+            "hazard": "extreme_heat",
+            "trigger": {
+                "source": "NWS",
+                "field": "alert.event",
+                "operator": "in",
+                "value": [
+                    "Heat Advisory",
+                    "Excessive Heat Warning"
+                ],
+                "and": [
+                    "relevant_geographic_overlap",
+                    "active_during_operating_or_commute_window"
+                ]
+            },
+            "recommended_status": "TELEWORK",
+            "condition": "Use CLOSURE if safe indoor temperatures cannot be maintained or the facility is otherwise unsafe; use NORMAL if safe indoor conditions and travel are confirmed.",
+            "authority_type": "official_alert_with_prototype_mapping",
+            "rationale": "Local alert criteria and verified facility cooling/operating conditions are more defensible than a single national heat-index closure threshold.",
+            "escalation_conditions": [
+                "HVAC_failure_and_unsafe_indoor_conditions",
+                "official_emergency_instruction"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-alerts",
+                "https://www.weather.gov/safety/heat"
+            ]
+        },
+        {
+            "rule_id": "COLD-001",
+            "hazard": "extreme_cold",
+            "trigger": {
+                "source": "NWS",
+                "field": "alert.event",
+                "operator": "in",
+                "value": [
+                    "Cold Weather Advisory",
+                    "Extreme Cold Warning"
+                ],
+                "and": [
+                    "relevant_geographic_overlap",
+                    "active_during_operating_or_commute_window"
+                ]
+            },
+            "recommended_status": "TELEWORK",
+            "condition": "Use DELAY if conditions are expected to improve; use CLOSURE if heat, water, or other required facility systems fail and the facility is unsafe.",
+            "authority_type": "official_alert_with_prototype_mapping",
+            "rationale": "Use local NWS criteria, commute conditions, and verified building readiness.",
+            "escalation_conditions": [
+                "heating_failure_and_unsafe_indoor_conditions",
+                "critical_route_closed",
+                "official_emergency_instruction"
+            ],
+            "source_urls": [
+                "https://www.weather.gov/documentation/services-web-alerts",
+                "https://www.weather.gov/safety/cold"
+            ]
+        },
+        {
+            "rule_id": "FAC-001",
+            "hazard": "facility_safety",
+            "trigger": {
+                "source": "facility_manager_or_authoritative_emergency_source",
+                "field": "facility_safe_to_occupy",
+                "operator": "equals",
+                "value": false
+            },
+            "recommended_status": "CLOSURE",
+            "authority_type": "verified_facility_condition",
+            "rationale": "A facility that is not safe to occupy should not continue normal on-site operations.",
+            "escalation_conditions": [
+                "invoke_facility_emergency_plan"
+            ],
+            "source_urls": []
+        },
+        {
+            "rule_id": "FAC-002",
+            "hazard": "facility_power_or_critical_systems",
+            "trigger": {
+                "source": "facility_operations",
+                "field": "critical_system_status",
+                "operator": "equals",
+                "value": "FAILED_AND_UNSAFE"
+            },
+            "recommended_status": "CLOSURE",
+            "authority_type": "verified_facility_condition",
+            "rationale": "Close when required systems fail and the facility cannot safely operate under its continuity and emergency procedures.",
+            "escalation_conditions": [
+                "invoke_facility_emergency_plan"
+            ],
+            "source_urls": []
+        },
+        {
+            "rule_id": "TIME-001",
+            "hazard": "deteriorating_conditions",
+            "trigger": {
+                "all": [
+                    "relevant_hazard_forecast_to_worsen_during_workday",
+                    "safe_departure_window_exists",
+                    "manager_policy_allows_early_release"
+                ]
+            },
+            "recommended_status": "EARLY_DISMISSAL",
+            "authority_type": "prototype_timing_policy",
+            "rationale": "Early dismissal is a timing-specific decision; it should only be recommended when departure can occur safely before conditions deteriorate.",
+            "escalation_conditions": [
+                "departure_already_unsafe"
+            ],
+            "source_urls": [
+                "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures"
+            ]
+        },
+        {
+            "rule_id": "DATA-001",
+            "hazard": "data_quality",
+            "trigger": {
+                "all": [
+                    "critical_source_missing_or_stale",
+                    "decision_depends_on_that_source"
+                ]
+            },
+            "recommended_status": "NORMAL",
+            "output_override": {
+                "status": "INSUFFICIENT_EVIDENCE",
+                "manager_review_required": true,
+                "confidence": "LOW"
+            },
+            "authority_type": "data_quality_policy",
+            "rationale": "The status field is only a placeholder in this rule; the actual response must be INSUFFICIENT_EVIDENCE, not a claim that conditions are normal. Missing data is not evidence of safety.",
+            "escalation_conditions": [],
+            "source_urls": []
+        }
+    ],
+    "employee_handling": {
+        "telework_eligible": "Use agency-defined eligibility and approval rules; do not infer eligibility from weather data.",
+        "essential_personnel": "Apply the agency's essential-personnel instructions; do not automatically exempt or require attendance based solely on this matrix.",
+        "accessibility_needs": "Use approved accommodation workflows and avoid exposing sensitive details in general notifications.",
+        "notification_dispatch": "Generate recipient lists and message drafts after the manager approves the operating status, unless emergency procedures require immediate communication."
+    },
+    "data_quality": {
+        "required_evidence_fields": [
+            "source_name",
+            "source_url_or_identifier",
+            "retrieved_at",
+            "effective_at",
+            "expires_at_or_valid_until",
+            "geographic_coverage",
+            "raw_value_or_alert_payload"
+        ],
+        "rules": [
+            "Expired or cancelled alerts must not count as active alerts.",
+            "An alert must intersect the facility or a relevant commute area before it is treated as locally applicable.",
+            "Unknown road conditions must not be interpreted as clear roads.",
+            "Conflicting sources must be preserved and shown to the manager.",
+            "Confidence should reflect source freshness, geographic precision, agreement between sources, and whether employee routes are known."
+        ],
+        "prototype_freshness_policy": {
+            "dot_data_stale_after_minutes": 15,
+            "label": "Prototype setting only; not an official DOT update interval."
+        }
+    },
+    "source_register": [
+        {
+            "source_id": "NWS_API",
+            "name": "National Weather Service API",
+            "url": "https://www.weather.gov/documentation/services-web-api",
+            "use": "Alerts, forecasts, observations, event type, severity, urgency, certainty, effective/expiration times, and geographic coverage."
+        },
+        {
+            "source_id": "NWS_ALERTS",
+            "name": "NWS Alerts Web Service",
+            "url": "https://www.weather.gov/documentation/services-web-alerts",
+            "use": "Alert retrieval and alert metadata."
+        },
+        {
+            "source_id": "NWS_KC_CRITERIA",
+            "name": "NWS Kansas City/Pleasant Hill Watch/Warning/Advisory Criteria",
+            "url": "https://www.weather.gov/eax/eaxwwacriteria2",
+            "use": "Local criteria for the Kansas City/Pleasant Hill forecast area; only apply when geography matches."
+        },
+        {
+            "source_id": "NWS_FLOOD_SAFETY",
+            "name": "NWS Flood Safety",
+            "url": "https://www.weather.gov/safety/flood",
+            "use": "Flood hazard and safety guidance."
+        },
+        {
+            "source_id": "NWS_LIGHTNING_SAFETY",
+            "name": "NWS Lightning Safety",
+            "url": "https://www.weather.gov/safety/lightning",
+            "use": "Outdoor lightning safety; 30-minute wait after last thunder before resuming outdoor activities."
+        },
+        {
+            "source_id": "MODOT",
+            "name": "MoDOT Traveler Information Map",
+            "url": "https://traveler.modot.org/mapv3/index.html",
+            "use": "Road closures, flooding, delays, and winter road-condition observations in Missouri."
+        },
+        {
+            "source_id": "OPM",
+            "name": "OPM Snow & Dismissal Procedures",
+            "url": "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures",
+            "use": "Reference vocabulary and employee operating-status concepts; direct procedures are geographically scoped and do not establish universal weather thresholds."
+        }
+    ],
+    "llm_instructions": [
+        "Do not invent thresholds, source values, alert IDs, timestamps, or road conditions.",
+        "Do not treat a prototype mapping as official government policy.",
+        "Only state that a threshold was crossed when the normalized evidence supports it.",
+        "When a rule fires, cite its rule_id and show the observed evidence and source.",
+        "Explain why the selected status is preferable to the next less restrictive and more restrictive statuses when the evidence supports that comparison.",
+        "If evidence is insufficient, return INSUFFICIENT_EVIDENCE and list what is missing; do not fabricate certainty.",
+        "Do not issue notifications or claim a facility is closed until the authorized decision is recorded, except for emergency actions required by established procedures.",
+        "Separate the primary facility status from employee-specific telework, essential-personnel, and accommodation instructions."
+    ]
+}
