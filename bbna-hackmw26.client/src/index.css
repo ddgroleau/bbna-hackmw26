@@ -169,6 +169,7 @@ td strong + span { font-size: 12px; color: var(--blue); }
 .confidence strong { display: block; font-size: 28px; line-height: 1.1; }
 .confidence span { font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue); }
 .rec-explanation { font-size: 17px; color: var(--ink); }
+.rec-pending { display: flex; align-items: center; gap: 12px; font-size: 17px; color: var(--tone); }
 .triggers th, .triggers td { padding-left: 0; }
 .rec-actions { display: flex; align-items: center; gap: 12px; padding-top: 20px; border-top: 1px solid var(--line); }
 .alternatives { display: grid; gap: 10px; }

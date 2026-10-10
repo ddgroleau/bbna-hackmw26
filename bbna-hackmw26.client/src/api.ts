@@ -146,6 +146,120 @@ export interface Decision extends NotifyRequest {
     sentAt: string;
 }
 
+// The agent's recommendation from /api/analyze.
+export interface Analysis {
+    posture: Posture;
+    summary: string;
+    confidence: number;
+    email: string;
+}
+
+export type AnalysisState =
+    | { status: 'loading' }
+    | { status: 'ready'; data: Analysis }
+    | { status: 'error'; message: string };
+
+export interface LiveAlert {
+    id: string;
+    event: string;
+    severity: string;
+    urgency: string;
+    certainty: string;
+    headline: string | null;
+    areaDescription: string | null;
+    ends: string | null;
+    expires: string | null;
+}
+
+// The live National Weather Service reading and alerts the agent analyzes.
+export interface LiveWeather {
+    current: {
+        stationName: string;
+        observedAt: string;
+        conditions: string | null;
+        temperatureF: number | null;
+        feelsLikeF: number | null;
+        humidityPercent: number | null;
+        windSpeedMph: number | null;
+        windGustMph: number | null;
+        windDirection: string | null;
+        visibilityMiles: number | null;
+    };
+    alerts: LiveAlert[];
+    // Null when the forecast feed could not be reached; the reading and alerts still show.
+    forecast: LiveForecast | null;
+}
+
+// One slice of a workday from /api/weather/forecast. A null value was not forecast or does not apply.
+export interface ForecastWindow {
+    start: string;
+    end: string;
+    snowInches: number | null;
+    iceInches: number | null;
+    lowestWindChillF: number | null;
+    highestHeatIndexF: number | null;
+    highestWindGustMph: number | null;
+    highestPrecipChancePercent: number | null;
+    highestThunderChancePercent: number | null;
+}
+
+export interface ForecastDay {
+    date: string;
+    dayOfWeek: string;
+    overnight: ForecastWindow;
+    morningCommute: ForecastWindow;
+    officeHours: ForecastWindow;
+    eveningCommute: ForecastWindow;
+    wholeDay: ForecastWindow;
+}
+
+export interface LiveForecast {
+    forecastUpdatedAt: string | null;
+    days: ForecastDay[];
+}
+
+const analysesInFlight = new Map<string, Promise<Analysis>>();
+
+// Each analysis is a paid model call, so identical requests made while one is still running
+// (React's development double-render, a double click) share that one request.
+export function fetchAnalysis(scenario?: string): Promise<Analysis> {
+    const query = scenario ? `?scenario=${encodeURIComponent(scenario)}` : '';
+    let request = analysesInFlight.get(query);
+    if (!request) {
+        request = requestAnalysis(query).finally(() => analysesInFlight.delete(query));
+        analysesInFlight.set(query, request);
+    }
+    return request;
+}
+
+async function requestAnalysis(query: string): Promise<Analysis> {
+    const response = await fetch(`/api/analyze${query}`);
+    const body = await response.json().catch(() => null);
+    if (!response.ok || !body?.success) {
+        throw new Error(body?.error ?? `The agent endpoint answered ${response.status}.`);
+    }
+    return {
+        posture: body.data.PostureStatus,
+        summary: body.data.Summary,
+        confidence: body.data.ConfidencePercentage,
+        email: body.data.EmailNotification,
+    };
+}
+
+export async function fetchLiveWeather(): Promise<LiveWeather> {
+    const [current, alerts, forecast] = await Promise.all([
+        fetch('/api/weather/current'),
+        fetch('/api/weather/alerts'),
+        fetch('/api/weather/forecast')
+            .then(response => (response.ok ? response.json() : null))
+            .catch(() => null),
+    ]);
+    if (!current.ok || !alerts.ok) {
+        throw new Error(`The live weather feed answered ${current.ok ? alerts.status : current.status}.`);
+    }
+    return { current: await current.json(), alerts: (await alerts.json()).alerts, forecast };
+}
+
 // Decision log (server/Audit). Each record holds the captured evidence, the recommendation,
 // and the human decision as a hash-chained list of events.
 
@@ -209,19 +323,36 @@ async function failure(response: Response, what: string): Promise<Error> {
     return new Error(problem?.title ?? `The server answered ${response.status} for ${what}.`);
 }
 
-async function createDecisionRecord(situation: Situation): Promise<DecisionRecordDetail> {
-    const { recommendation, weather, thresholds } = situation;
+// What a decision record is opened for: the agent's recommendation and the evidence behind it.
+export interface RecordEvidence {
+    situation: Situation;
+    analysis: Analysis;
+    // True when the agent analyzed the live feeds rather than the situation's mock scenario.
+    live: boolean;
+    liveWeather?: LiveWeather;
+}
+
+async function createDecisionRecord({ situation, analysis, live, liveWeather }: RecordEvidence): Promise<DecisionRecordDetail> {
+    const { weather, thresholds } = situation;
     const alerts = weather.alerts.length;
     const response = await fetch('/api/decisions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            recommendedPosture: recommendation.posture,
-            reason: `${recommendation.confidence}% confidence. ${recommendation.thresholdSummary}`,
+            recommendedPosture: analysis.posture,
+            reason: `${analysis.confidence}% confidence. ${analysis.summary}`,
             rulesetVersion: thresholds.rulesetVersion,
             evidence: {
-                summary: `${alerts} active NWS ${alerts === 1 ? 'alert' : 'alerts'}, ${weather.forecast.length} forecast periods, and 1 road report retained.`,
-                sources: { scenario: situation.scenario, capturedAt: situation.generatedAt, weather, recommendation },
+                summary: live
+                    ? `Latest NWS station reading, active alerts${liveWeather?.forecast ? ', and workday forecast' : ''} retained from the live feeds.`
+                    : `${alerts} active NWS ${alerts === 1 ? 'alert' : 'alerts'}, ${weather.forecast.length} forecast periods, and 1 road report retained from the mock scenario.`,
+                sources: {
+                    source: live ? 'live' : situation.scenario,
+                    capturedAt: situation.generatedAt,
+                    // The situation's weather is mock data, so it is only evidence for a scenario run.
+                    weather: live ? liveWeather ?? null : weather,
+                    recommendation: analysis,
+                },
             },
         }),
     });
@@ -240,9 +371,9 @@ const pendingRecords = new Map<string, Promise<DecisionRecordDetail>>();
 
 // Reuses the open record when it is still waiting on the same recommendation, so refreshing the
 // evidence does not pile up records. Anything else (decided, or a different recommendation) starts a new one.
-export function ensureDecisionRecord(situation: Situation): Promise<DecisionRecordDetail> {
-    const { posture } = situation.recommendation;
-    const { rulesetVersion } = situation.thresholds;
+export function ensureDecisionRecord(evidence: RecordEvidence): Promise<DecisionRecordDetail> {
+    const { posture } = evidence.analysis;
+    const { rulesetVersion } = evidence.situation.thresholds;
     const key = `${posture}:${rulesetVersion}`;
 
     // React runs effects twice in development; share the request so only one record is created.
@@ -254,7 +385,7 @@ export function ensureDecisionRecord(situation: Situation): Promise<DecisionReco
                 && latest.record.rulesetVersion === rulesetVersion) {
                 return latest;
             }
-            return createDecisionRecord(situation);
+            return createDecisionRecord(evidence);
         })().finally(() => pendingRecords.delete(key));
         pendingRecords.set(key, pending);
     }
