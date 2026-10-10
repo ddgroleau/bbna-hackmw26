@@ -10,3 +10,8 @@ GET {{bbna_hackmw26.Server_HostAddress}}/api/weather/raw
 Accept: application/json
 
 ###
+
+GET {{bbna_hackmw26.Server_HostAddress}}/api/weather/current
+Accept: application/json
+
+###
