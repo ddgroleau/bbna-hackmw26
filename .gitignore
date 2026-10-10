@@ -48,7 +48,7 @@ artifacts/
 **/Properties/launchSettings.json
 
 # VS Code
-.vscode/
+# .vscode/
 
 *_i.c
 *_p.c
