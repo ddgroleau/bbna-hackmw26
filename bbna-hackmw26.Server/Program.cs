@@ -37,8 +37,13 @@ builder.Services.AddHttpClient<SpcOutlookService>((sp, client) =>
     client.BaseAddress = new Uri(spc.BaseUrl);
     client.DefaultRequestHeaders.UserAgent.ParseAdd(spc.UserAgent);      // identifies our app to SPC
 });
+// Decision audit log: work out where its SQLite database file lives (Audit:DatabasePath in
+// appsettings.json, relative to the project folder) and register the store that reads/writes it.
+// The database itself is created further down, once, before the app starts serving requests.
 builder.Services.Configure<AuditOptions>(builder.Configuration.GetSection(AuditOptions.SectionName));
-builder.Services.AddSingleton<DecisionLogStore>();
+var auditOptions = builder.Configuration.GetSection(AuditOptions.SectionName).Get<AuditOptions>() ?? new AuditOptions();
+var auditDatabasePath = Path.GetFullPath(auditOptions.DatabasePath, builder.Environment.ContentRootPath);
+builder.Services.AddSingleton(new DecisionLogStore(AuditDatabase.ConnectionString(auditDatabasePath)));
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -46,7 +51,9 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-app.Services.GetRequiredService<DecisionLogStore>().Initialize();
+// Create the audit database once at startup. If the schema in AuditDatabase.Schema has changed since
+// the database was made, the old database is backed up, dropped and recreated with the new schema.
+AuditDatabase.EnsureCreated(auditDatabasePath, app.Logger);
 
 app.UseDefaultFiles();
 app.MapStaticAssets();
