@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="bbna-hackmw26.client/bbna-hackmw26.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="bbna-hackmw26.Server/bbna-hackmw26.Server.csproj" />
+</Solution>
