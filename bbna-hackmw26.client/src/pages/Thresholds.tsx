@@ -1,60 +1,68 @@
-import type { Situation } from '../api';
-import { Icon, PageHead } from '../components';
+import decisionMatrix from "../api/decision-matrix.json";
+import { Icon, PageHead } from "../components";
 
-export function ThresholdsPage({ situation }: { situation: Situation }) {
-    const { thresholds } = situation;
-    return (
-        <>
-            <PageHead
-                eyebrow="Governance"
-                title="Defensible thresholds"
-                subtitle="Every cutoff has an operational source, owner, and review date."
-            />
-            <div className="stack">
-                <div className="callout wide">
-                    <Icon name="shield" size={26} />
-                    <div>
-                        <strong>Human decision remains required</strong>
-                        <span>
-                            Rules produce a graded recommendation. They never change facility status or send notifications
-                            without an authorized manager.
-                        </span>
-                    </div>
-                </div>
+export function ThresholdsPage() {
+  // Group rules by level
+  const rulesByLevel = decisionMatrix.levels.map((level) => ({
+    level,
+    rules: decisionMatrix.rules.filter((rule) => rule.level === level.id),
+  }));
 
-                <section className="card flush">
-                    <div className="table-scroll">
-                        <table className="data">
-                            <thead>
-                                <tr><th>Decision level</th><th>Recommended posture</th><th>Trigger</th><th>Defensible basis</th></tr>
-                            </thead>
-                            <tbody>
-                                {thresholds.levels.map(level => (
-                                    <tr key={level.posture}>
-                                        <td><strong className="accent">{level.level}</strong></td>
-                                        <td>{level.postureLabel}</td>
-                                        <td>{level.trigger}</td>
-                                        <td>{level.basis}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+  return (
+    <>
+      <PageHead
+        eyebrow="Governance"
+        title="Defensible thresholds"
+        subtitle="Every cutoff has an operational source, owner, and review date."
+      />
+      <div className="stack">
+        <div className="callout wide">
+          <Icon name="shield" size={26} />
+          <div>
+            <strong>Human decision remains required</strong>
+            <span>
+              Rules produce a graded recommendation. They never change facility
+              status or send notifications without an authorized manager.
+            </span>
+          </div>
+        </div>
 
-                <div className="source-grid">
-                    {thresholds.sources.map(source => (
-                        <article key={source.title} className="card">
-                            <p className="eyebrow">{source.owner}</p>
-                            <h3>{source.title}</h3>
-                            <p className="small">{source.detail}</p>
-                            <p className="small muted card-foot">Reviewed {source.reviewed}</p>
-                        </article>
-                    ))}
-                </div>
-
-                <p className="small muted">Ruleset {thresholds.rulesetVersion}. {thresholds.dataNote}</p>
+        {rulesByLevel.map(({ level, rules }) => (
+          <section key={level.id} className="card flush">
+            <h2
+              className="eyebrow"
+              style={{ paddingLeft: "1.5rem", paddingTop: "1rem" }}
+            >
+              {level.title}
+            </h2>
+            <div className="table-scroll">
+              <table className="data">
+                <thead>
+                  <tr>
+                    <th>Rule</th>
+                    <th>Trigger</th>
+                    <th>Defensible basis</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rules.map((rule) => (
+                    <tr key={rule.id}>
+                      <td>
+                        <strong>{rule.title}</strong>
+                        <p className="small">{rule.description}</p>
+                      </td>
+                      <td className="small">{rule.trigger}</td>
+                      <td className="small">{rule.basis}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-        </>
-    );
+          </section>
+        ))}
+
+        <p className="small muted">{decisionMatrix.note}</p>
+      </div>
+    </>
+  );
 }
