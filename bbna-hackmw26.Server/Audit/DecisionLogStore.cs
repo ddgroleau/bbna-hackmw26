@@ -3,104 +3,21 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Options;
 
 namespace bbna_hackmw26.Server.Audit
 {
     // SQLite-backed decision log. decision_records holds the current state of each record;
     // audit_events is an append-only, hash-chained history that the state can be reconstructed from.
-    public class DecisionLogStore
+    // The database itself (tables, schema changes) is set up once at startup by AuditDatabase, called from Program.cs;
+    // this class only reads and writes records.
+    public class DecisionLogStore(string connectionString)
     {
-        private const string Schema = """
-            PRAGMA journal_mode = WAL;
-
-            CREATE TABLE IF NOT EXISTS decision_records (
-                id                    TEXT PRIMARY KEY,
-                facility_code         TEXT NOT NULL,
-                facility_name         TEXT NOT NULL,
-                status                TEXT NOT NULL CHECK (status IN ('AwaitingDecision', 'Decided')),
-                recommended_posture   TEXT NOT NULL CHECK (recommended_posture IN ('Normal', 'Delay', 'EarlyDismissal', 'Telework', 'Closure')),
-                recommendation_reason TEXT NOT NULL,
-                ruleset_version       TEXT NOT NULL,
-                final_posture         TEXT CHECK (final_posture IN ('Normal', 'Delay', 'EarlyDismissal', 'Telework', 'Closure')),
-                action                TEXT CHECK (action IN ('Accepted', 'Overridden')),
-                decided_by            TEXT,
-                decided_at            TEXT,
-                created_at            TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS ix_decision_records_facility
-                ON decision_records (facility_code, created_at DESC);
-
-            CREATE TABLE IF NOT EXISTS audit_events (
-                seq         INTEGER PRIMARY KEY AUTOINCREMENT,
-                record_id   TEXT NOT NULL REFERENCES decision_records (id),
-                occurred_at TEXT NOT NULL,
-                kind        TEXT NOT NULL,
-                actor       TEXT NOT NULL,
-                title       TEXT NOT NULL,
-                detail      TEXT NOT NULL,
-                payload     TEXT,
-                prev_hash   TEXT,
-                hash        TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS ix_audit_events_record ON audit_events (record_id, seq);
-
-            CREATE TRIGGER IF NOT EXISTS audit_events_no_update BEFORE UPDATE ON audit_events
-            BEGIN SELECT RAISE(ABORT, 'audit_events is append-only'); END;
-
-            CREATE TRIGGER IF NOT EXISTS audit_events_no_delete BEFORE DELETE ON audit_events
-            BEGIN SELECT RAISE(ABORT, 'audit_events is append-only'); END;
-
-            CREATE TRIGGER IF NOT EXISTS decision_records_no_delete BEFORE DELETE ON decision_records
-            BEGIN SELECT RAISE(ABORT, 'decision records cannot be deleted'); END;
-
-            CREATE TRIGGER IF NOT EXISTS decision_records_final BEFORE UPDATE ON decision_records
-            WHEN OLD.status = 'Decided'
-            BEGIN SELECT RAISE(ABORT, 'decided records are immutable'); END;
-
-            PRAGMA user_version = 2;
-            """;
-
-        // Version 1 stored Open/Closed instead of the operating posture. Bumped whenever the schema changes shape.
-        private const int SchemaVersion = 2;
-
         private const string RecordColumns = """
             id, facility_code, facility_name, status, recommended_posture, recommendation_reason,
             ruleset_version, final_posture, action, decided_by, decided_at, created_at
             """;
 
-        private readonly string _connectionString;
-
-        public DecisionLogStore(IOptions<AuditOptions> options, IWebHostEnvironment env)
-        {
-            var path = Path.GetFullPath(options.Value.DatabasePath, env.ContentRootPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            _connectionString = new SqliteConnectionStringBuilder
-            {
-                DataSource = path,
-                ForeignKeys = true,
-            }.ToString();
-        }
-
-        public void Initialize()
-        {
-            using var conn = Open();
-            using var cmd = conn.CreateCommand();
-
-            // The log is append-only, so an older schema is never migrated or dropped automatically.
-            cmd.CommandText = "SELECT (SELECT user_version FROM pragma_user_version), (SELECT COUNT(*) FROM sqlite_master WHERE name = 'decision_records')";
-            using (var reader = cmd.ExecuteReader())
-            {
-                reader.Read();
-                if (reader.GetInt64(1) > 0 && reader.GetInt64(0) != SchemaVersion)
-                    throw new InvalidOperationException(
-                        $"The audit database at {conn.DataSource} uses schema version {reader.GetInt64(0)}, but version {SchemaVersion} is required. " +
-                        "Move or delete it (and its -wal/-shm files) to start a new log.");
-            }
-
-            cmd.CommandText = Schema;
-            cmd.ExecuteNonQuery();
-        }
+        private readonly string _connectionString = connectionString;
 
         // Creates a record awaiting a human decision, logging the captured evidence and the rules engine recommendation.
         public async Task<DecisionRecordDetail> CreateAsync(
