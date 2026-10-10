@@ -1,123 +1,104 @@
-import { fileURLToPath, URL } from 'node:url';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { fileURLToPath, URL } from "node:url";
 
-import { defineConfig } from 'vite';
-import plugin from '@vitejs/plugin-react';
-import fs from 'fs';
-import path from 'path';
-import child_process from 'child_process';
-import { env } from 'process';
-import express from 'express';
+import plugin from "@vitejs/plugin-react";
+import child_process from "child_process";
+import fs from "fs";
+import path from "path";
+import { env } from "process";
+import { defineConfig } from "vite";
 
 const baseFolder =
-    env.APPDATA !== undefined && env.APPDATA !== ''
-        ? `${env.APPDATA}/ASP.NET/https`
-        : `${env.HOME}/.aspnet/https`;
+  env.APPDATA !== undefined && env.APPDATA !== ""
+    ? `${env.APPDATA}/ASP.NET/https`
+    : `${env.HOME}/.aspnet/https`;
 
 const certificateName = "bbna-hackmw26.client";
 const certFilePath = path.join(baseFolder, `${certificateName}.pem`);
 const keyFilePath = path.join(baseFolder, `${certificateName}.key`);
 
 if (!fs.existsSync(baseFolder)) {
-    fs.mkdirSync(baseFolder, { recursive: true });
+  fs.mkdirSync(baseFolder, { recursive: true });
 }
 
 if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
-    if (0 !== child_process.spawnSync('dotnet', [
-        'dev-certs',
-        'https',
-        '--export-path',
+  if (
+    0 !==
+    child_process.spawnSync(
+      "dotnet",
+      [
+        "dev-certs",
+        "https",
+        "--export-path",
         certFilePath,
-        '--format',
-        'Pem',
-        '--no-password',
-    ], { stdio: 'inherit', }).status) {
-        throw new Error("Could not create certificate.");
-    }
+        "--format",
+        "Pem",
+        "--no-password",
+      ],
+      { stdio: "inherit" },
+    ).status
+  ) {
+    throw new Error("Could not create certificate.");
+  }
 }
 
-const target = env.ASPNETCORE_HTTPS_PORT ? `https://localhost:${env.ASPNETCORE_HTTPS_PORT}` :
-    env.ASPNETCORE_URLS ? env.ASPNETCORE_URLS.split(';')[0] : 'https://localhost:7008';
+const target = env.ASPNETCORE_HTTPS_PORT
+  ? `https://localhost:${env.ASPNETCORE_HTTPS_PORT}`
+  : env.ASPNETCORE_URLS
+    ? env.ASPNETCORE_URLS.split(";")[0]
+    : "https://localhost:7008";
 
-// Custom plugin to handle API routes
+// API plugin that integrates with the API handler
 function apiPlugin() {
-    return {
-        name: 'api-plugin',
-        configureServer(viteServer: any) {
-            // Add middleware BEFORE other middlewares
-            viteServer.middlewares.use('/api/analyze', express.json());
-            viteServer.middlewares.use((req: any, res: any, next: any) => {
-                // Only /api/analyze is served here. Every other /api route falls through
-                // to the proxy below and is answered by the ASP.NET server.
-                if (!req.url.startsWith('/api/analyze')) {
-                    return next();
-                }
+  let handleApiRequest: any = null;
 
-                if (req.url.startsWith('/api/analyze') && req.method === 'GET') {
-                    try {
-                        const url = new URL(`http://localhost${req.url}`);
-                        const data = url.searchParams.get('data');
-                        
-                        if (!data) {
-                            res.writeHead(400, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ 
-                                success: false, 
-                                error: 'No data provided' 
-                            }));
-                            return;
-                        }
+  return {
+    name: "api-plugin",
+    async configureServer(viteServer: any) {
+      // Load the API handler
+      const { handleApiRequest: handler } = await import("./src/api/index.js");
+      handleApiRequest = handler;
 
-                        res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({
-                            success: true,
-                            data: {
-                                summary: 'Analysis pending - AWS Strands integration required',
-                                status: 'pending'
-                            }
-                        }));
-                        return;
-                    } catch (error) {
-                        res.writeHead(500, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({
-                            success: false,
-                            error: 'Internal server error'
-                        }));
-                        return;
-                    }
-                }
-                
-                res.writeHead(404, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ 
-                    success: false, 
-                    error: 'Endpoint not found' 
-                }));
-            });
+      // Middleware that runs BEFORE Vite's default handlers
+      viteServer.middlewares.use(async (req: any, res: any, next: any) => {
+        try {
+          const handled = await handleApiRequest(req, res);
+          if (!handled) {
+            next();
+          }
+        } catch (err) {
+          console.error("❌ API error:", err);
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Internal server error" }));
         }
-    };
+      });
+    },
+  };
 }
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [plugin(), apiPlugin()],
-    resolve: {
-        alias: {
-            '@': fileURLToPath(new URL('./src', import.meta.url))
-        }
+  plugins: [plugin(), apiPlugin()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
-    server: {
-        proxy: {
-            '^/weatherforecast': {
-                target,
-                secure: false
-            },
-            '^/api': {
-                target,
-                secure: false
-            }
-        },
-        port: parseInt(env.DEV_SERVER_PORT || '55630'),
-        https: {
-            key: fs.readFileSync(keyFilePath),
-            cert: fs.readFileSync(certFilePath),
-        }
-    }
-})
+  },
+  server: {
+    proxy: {
+      "^/weatherforecast": {
+        target,
+        secure: false,
+      },
+      "^/api": {
+        target,
+        secure: false,
+      },
+    },
+    port: parseInt(env.DEV_SERVER_PORT || "55630"),
+    https: {
+      key: fs.readFileSync(keyFilePath),
+      cert: fs.readFileSync(certFilePath),
+    },
+  },
+});
