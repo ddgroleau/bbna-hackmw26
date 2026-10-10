@@ -11,6 +11,9 @@ builder.Services.AddControllers();
 builder.Services.Configure<BuildingOptions>(builder.Configuration.GetSection(BuildingOptions.SectionName));
 builder.Services.Configure<NwsOptions>(builder.Configuration.GetSection(NwsOptions.SectionName));
 
+// In-memory cache, used to reuse a recent weather reading instead of calling NWS on every request.
+builder.Services.AddMemoryCache();
+
 // ...and register the NWS weather service with its own HttpClient, pre-configured
 // with the NWS base URL and the headers api.weather.gov expects on every request.
 builder.Services.AddHttpClient<NwsWeatherService>((sp, client) =>

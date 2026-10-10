@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace bbna_hackmw26.Server.Weather
@@ -14,7 +15,8 @@ namespace bbna_hackmw26.Server.Weather
     /// <param name="Station">The station that took the reading.</param>
     /// <param name="SourceUrl">The exact NWS URL the reading was fetched from.</param>
     /// <param name="Data">The unmodified NWS JSON (temperature, wind, humidity, etc.).</param>
-    public record RawObservation(ObservationStation Station, string SourceUrl, JsonElement Data);
+    /// <param name="RetrievedAt">When our server fetched it from NWS (UTC). Cached readings keep their original time.</param>
+    public record RawObservation(ObservationStation Station, string SourceUrl, JsonElement Data, DateTimeOffset RetrievedAt);
 
     /// <summary>
     /// Talks to the National Weather Service API to get weather for the configured building.
@@ -23,23 +25,40 @@ namespace bbna_hackmw26.Server.Weather
     ///   1. Ask NWS which forecast grid the building's coordinates fall in  (GET /points/{lat},{lon})
     ///   2. Ask for the observation stations for that grid, nearest first  (GET /gridpoints/.../stations)
     ///   3. Get the latest reading from the nearest station                (GET /stations/{id}/observations/latest)
-    /// Steps 1-2 only run once, because the building doesn't move; step 3 runs on every request.
+    /// Steps 1-2 only run once, because the building doesn't move. Step 3's result is cached
+    /// for a few minutes (Nws:CacheMinutes in appsettings.json), because stations only report
+    /// about once an hour and we don't want every page load to hit NWS.
     ///
     /// The HttpClient is pre-configured in Program.cs with the NWS base URL and required headers.
     /// </summary>
-    public class NwsWeatherService(HttpClient http, IOptions<BuildingOptions> building)
+    public class NwsWeatherService(
+        HttpClient http,
+        IMemoryCache cache,
+        IOptions<BuildingOptions> building,
+        IOptions<NwsOptions> nws)
     {
+        // Key the latest reading is stored under in the in-memory cache.
+        private const string LatestObservationCacheKey = "nws:latest-observation";
+
         private readonly BuildingOptions _building = building.Value;
+        private readonly NwsOptions _nws = nws.Value;
 
         // The nearest station, remembered after the first lookup (steps 1-2 above).
         // It's static because ASP.NET creates a new instance of this service for every
         // request, and an instance field would be thrown away each time.
         private static ObservationStation? _station;
 
-        /// <summary>Gets the most recent weather reading from the station nearest the building.</summary>
+        /// <summary>
+        /// Gets the most recent weather reading from the station nearest the building.
+        /// Returns the cached reading if we fetched one within the last few minutes.
+        /// </summary>
         /// <exception cref="HttpRequestException">NWS could not be reached or returned an error.</exception>
         public async Task<RawObservation> GetLatestObservationAsync(CancellationToken ct)
         {
+            // Fetched recently? Reuse it instead of calling NWS again.
+            if (cache.TryGetValue(LatestObservationCacheKey, out RawObservation? cached) && cached is not null)
+                return cached;
+
             // Steps 1-2: find (or reuse) the nearest station.
             var station = await GetNearestStationAsync(ct);
 
@@ -47,8 +66,13 @@ namespace bbna_hackmw26.Server.Weather
             var url = $"stations/{station.Id}/observations/latest";
             var data = await GetJsonAsync(url, ct);
 
-            // Return the reading untouched, with the full source URL so callers can see where it came from.
-            return new RawObservation(station, new Uri(http.BaseAddress!, url).ToString(), data);
+            // Keep the reading untouched, with the full source URL so callers can see where it came from.
+            var observation = new RawObservation(
+                station, new Uri(http.BaseAddress!, url).ToString(), data, DateTimeOffset.UtcNow);
+
+            // Cache it. Failed requests throw before reaching this line, so errors are never cached.
+            cache.Set(LatestObservationCacheKey, observation, TimeSpan.FromMinutes(_nws.CacheMinutes));
+            return observation;
         }
 
         /// <summary>

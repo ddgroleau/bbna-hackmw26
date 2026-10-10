@@ -37,5 +37,9 @@ namespace bbna_hackmw26.Server.Weather
         // api.weather.gov rejects requests without a User-Agent identifying the app.
         // TODO: the configured value still needs contact info (email or URL), per NWS API guidelines.
         public string UserAgent { get; set; } = "bbna-hackmw26";
+
+        // How long (in minutes) to reuse a weather reading before asking NWS again.
+        // Stations only report about once an hour, so a few minutes of caching loses nothing.
+        public int CacheMinutes { get; set; } = 5;
     }
 }
