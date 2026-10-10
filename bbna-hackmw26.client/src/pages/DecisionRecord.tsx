@@ -1,102 +1,75 @@
-import type { Analysis, Decision, Situation } from '../api';
+import { useEffect, useState } from 'react';
+import { fetchDecisionLog } from '../api';
+import type { AuditEvent, DecisionRecordDetail } from '../api';
 import { Icon, PageHead } from '../components';
 import type { IconName } from '../components';
-import { POSTURES, formatCount, formatDateTime } from '../format';
+import { POSTURES, formatDateTime } from '../format';
 
-interface RecordEvent {
-    icon: IconName;
-    when: string;
-    title: string;
-    detail: string;
+const EVENT_ICONS: Record<AuditEvent['kind'], IconName> = {
+    EvidenceCaptured: 'refresh',
+    RecommendationGenerated: 'shield',
+    DecisionRecorded: 'check',
+};
+
+// The log stores UTC; show it in the viewer's own zone.
+const ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const stamp = (value: string) => formatDateTime(value, ZONE);
+
+function statusLabel({ record }: DecisionRecordDetail): string {
+    if (record.status === 'AwaitingDecision') return 'Awaiting decision';
+    return `${record.action === 'Overridden' ? 'Overridden' : 'Accepted'}: ${POSTURES[record.finalPosture!].label}`;
 }
 
-interface Props {
-    situation: Situation;
-    // The agent's recommendation, once it has one.
-    analysis?: Analysis;
-    // True when the agent analyzed the live feeds rather than a mock scenario.
-    live: boolean;
-    decision?: Decision;
+function integrityLabel({ integrity }: DecisionRecordDetail): string {
+    return integrity.valid
+        ? `Hash chain verified (${integrity.eventCount} events)`
+        : `Chain broken at event ${integrity.brokenAtSeq}`;
 }
 
-export function DecisionRecordPage({ situation, analysis, live, decision }: Props) {
-    const { facility, weather, decisionWindow, thresholds } = situation;
-    const stamp = (value: string) => formatDateTime(value, facility.timeZone);
-    const recommended = analysis ? POSTURES[analysis.posture].label : undefined;
+function exportRecord(detail: DecisionRecordDetail) {
+    const json = JSON.stringify({ exportedAt: new Date().toISOString(), detail }, null, 2);
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${detail.record.id}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
 
-    const events: RecordEvent[] = [
-        {
-            icon: 'refresh',
-            when: stamp(situation.generatedAt),
-            title: 'Automated evidence capture completed',
-            detail: live
-                ? 'Latest NWS station reading and active alerts retained from the live feeds.'
-                : `${weather.alerts.length} active NWS ${weather.alerts.length === 1 ? 'alert' : 'alerts'}, ${weather.forecast.length} forecast periods, and 1 road report retained from the mock scenario.`,
-        },
-        analysis
-            ? {
-                icon: 'shield',
-                when: stamp(situation.generatedAt),
-                title: 'AI agent generated recommendation',
-                detail: `${recommended} at ${analysis.confidence}% confidence, judged against threshold table ${thresholds.rulesetVersion}.`,
-            }
-            : {
-                icon: 'clock',
-                when: 'Pending',
-                title: 'AI agent recommendation not available',
-                detail: 'The agent has not returned an analysis for this evidence.',
-            },
-    ];
+// Everything on this page is read from the decision log (GET /api/decisions).
+// `current` is the record this session is working on; the page opens on it and reloads when it changes.
+export function DecisionRecordPage({ current }: { current?: DecisionRecordDetail }) {
+    const [log, setLog] = useState<DecisionRecordDetail[]>();
+    const [error, setError] = useState<string>();
+    const [loading, setLoading] = useState(true);
+    const [reloads, setReloads] = useState(0);
+    const [selectedId, setSelectedId] = useState<string>();
 
-    if (decision) {
-        const chosen = POSTURES[decision.posture].label;
-        events.push(
-            {
-                icon: 'check',
-                when: stamp(decision.sentAt),
-                title: `Manager approved ${chosen.toLowerCase()}`,
-                detail: !analysis
-                    ? 'The decision was made without an agent recommendation.'
-                    : decision.posture === analysis.posture
-                        ? 'The recommendation was accepted without change.'
-                        : `The manager changed the posture from the recommended ${POSTURES[analysis.posture].label.toLowerCase()}.`,
-            },
-            {
-                icon: 'send',
-                when: stamp(decision.sentAt),
-                title: 'Notifications released (simulated)',
-                detail: `${formatCount(decision.recipients)} employees, including ${formatCount(decision.essentialRecipients)} essential personnel, through ${decision.channels.join(', ')}.`,
-            },
-        );
-    } else {
-        events.push({
-            icon: 'clock',
-            when: 'Pending',
-            title: 'Human decision required',
-            detail: 'The recommendation has not been accepted, changed, or rejected.',
-        });
+    const currentKey = current && `${current.record.id}:${current.record.status}`;
+
+    useEffect(() => {
+        let cancelled = false;
+        fetchDecisionLog()
+            .then(records => {
+                if (cancelled) return;
+                setLog(records);
+                setError(undefined);
+            })
+            .catch((e: Error) => {
+                if (!cancelled) setError(e.message);
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, [currentKey, reloads]);
+
+    function reload() {
+        setLoading(true);
+        setReloads(count => count + 1);
     }
 
-    function exportRecord() {
-        const record = {
-            recordId: decisionWindow.recordId,
-            facility: { id: facility.id, name: facility.name },
-            operatingDate: decisionWindow.operatingDate,
-            source: live ? 'live' : situation.scenario,
-            capturedAt: situation.generatedAt,
-            rulesetVersion: thresholds.rulesetVersion,
-            agentRecommendation: analysis ?? null,
-            // The situation's weather is mock data, so it is only evidence for a scenario run.
-            scenarioWeather: live ? null : weather,
-            decision: decision ?? null,
-        };
-        const url = URL.createObjectURL(new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' }));
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${decisionWindow.recordId}.json`;
-        link.click();
-        URL.revokeObjectURL(url);
-    }
+    const selected = log?.find(item => item.record.id === (selectedId ?? current?.record.id)) ?? log?.[0];
 
     return (
         <>
@@ -104,38 +77,122 @@ export function DecisionRecordPage({ situation, analysis, live, decision }: Prop
                 eyebrow="Audit trail"
                 title="Decision record"
                 subtitle="A reconstructable record of what was known, when, and by whom."
-                action={<button className="btn" onClick={exportRecord}><Icon name="file" size={18} />Export record</button>}
+                action={selected && (
+                    <button className="btn" onClick={() => exportRecord(selected)}><Icon name="file" size={18} />Export record</button>
+                )}
             />
             <div className="stack">
-                <dl className="card meta-grid">
-                    <div><dt>Record ID</dt><dd>{decisionWindow.recordId}</dd></div>
-                    <div><dt>Facility</dt><dd>{facility.shortName}</dd></div>
-                    <div><dt>Status</dt><dd>{decision ? 'Decision recorded' : 'Awaiting decision'}</dd></div>
-                    <div><dt>Integrity</dt><dd>Inputs timestamped</dd></div>
-                </dl>
+                {error && (
+                    <p className="banner tone-danger">
+                        <Icon name="alert" />Could not load the decision log: {error}
+                        {log && ' Showing the last data received.'}
+                    </p>
+                )}
 
-                <ol className="card events">
-                    {events.map(event => (
-                        <li key={event.title}>
-                            <span className="tile-icon round"><Icon name={event.icon} /></span>
+                {!log && !error && <p className="card">Loading the decision log…</p>}
+                {log?.length === 0 && <p className="card">The decision log is empty. A record opens when a recommendation is generated.</p>}
+
+                {selected && <RecordDetail detail={selected} />}
+
+                {log && log.length > 0 && (
+                    <section className="card">
+                        <div className="section-head">
                             <div>
-                                <time>{event.when}</time>
-                                <strong>{event.title}</strong>
-                                <span>{event.detail}</span>
+                                <h2>Decision log</h2>
+                                <p className="small">{log.length} {log.length === 1 ? 'record' : 'records'}, newest first. Times in {ZONE}.</p>
                             </div>
-                        </li>
-                    ))}
-                </ol>
+                            <button className="btn btn-small" onClick={reload} disabled={loading}>
+                                <Icon name="refresh" size={16} />{loading ? 'Loading…' : 'Reload'}
+                            </button>
+                        </div>
+                        <div className="table-scroll">
+                            <table className="data">
+                                <thead>
+                                    <tr><th>Record</th><th>Recommended</th><th>Outcome</th><th>Integrity</th></tr>
+                                </thead>
+                                <tbody>
+                                    {log.map(item => {
+                                        const { record } = item;
+                                        const isSelected = item === selected;
+                                        return (
+                                            <tr key={record.id} aria-selected={isSelected}>
+                                                <td>
+                                                    <button className="btn-link log-id" onClick={() => setSelectedId(record.id)} aria-current={isSelected || undefined}>
+                                                        {record.id}
+                                                    </button>
+                                                    <span>{stamp(record.createdAt)}{record.id === current?.record.id && ' · current'}</span>
+                                                </td>
+                                                <td>{POSTURES[record.recommendedPosture].label}</td>
+                                                <td>
+                                                    <span className={`chip ${record.status === 'Decided' ? 'chip-ok' : 'chip-warn'}`}>
+                                                        {statusLabel(item)}
+                                                    </span>
+                                                </td>
+                                                <td>{item.integrity.valid ? 'Verified' : `Broken at ${item.integrity.brokenAtSeq}`}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                )}
+            </div>
+        </>
+    );
+}
 
-                <div className="callout wide">
-                    <Icon name="shield" size={26} />
-                    <div>
-                        <strong>Record integrity</strong>
-                        <span>
-                            Source payloads, ruleset version {thresholds.rulesetVersion}, recipient resolution, message content,
-                            and acknowledgements are retained for after-action review.
-                        </span>
-                    </div>
+function RecordDetail({ detail }: { detail: DecisionRecordDetail }) {
+    const { record, events } = detail;
+
+    return (
+        <>
+            <dl className="card meta-grid">
+                <div><dt>Record ID</dt><dd>{record.id}</dd></div>
+                <div><dt>Facility</dt><dd>{record.facilityName}</dd></div>
+                <div><dt>Status</dt><dd>{statusLabel(detail)}</dd></div>
+                <div><dt>Integrity</dt><dd>{integrityLabel(detail)}</dd></div>
+            </dl>
+
+            {!detail.integrity.valid && (
+                <p className="banner tone-danger">
+                    <Icon name="alert" />
+                    Event {detail.integrity.brokenAtSeq} no longer matches its hash. The log was changed after it was written.
+                </p>
+            )}
+
+            <ol className="card events">
+                {events.map(event => (
+                    <li key={event.seq}>
+                        <span className="tile-icon round"><Icon name={EVENT_ICONS[event.kind] ?? 'file'} /></span>
+                        <div>
+                            <time>{stamp(event.occurredAt)} · {event.actor}</time>
+                            <strong>{event.title}</strong>
+                            <span>{event.detail}</span>
+                        </div>
+                    </li>
+                ))}
+                {record.status === 'AwaitingDecision' && (
+                    <li>
+                        <span className="tile-icon round"><Icon name="clock" /></span>
+                        <div>
+                            <time>Pending</time>
+                            <strong>Human decision required</strong>
+                            <span>The recommendation has not been accepted or changed.</span>
+                        </div>
+                    </li>
+                )}
+            </ol>
+
+            <div className="callout wide">
+                <Icon name="shield" size={26} />
+                <div>
+                    <strong>Record integrity</strong>
+                    <span>
+                        Every entry is written to an append-only log and chained to the one before it by a SHA-256 hash,
+                        so any later change to the record is detected. Source payloads and ruleset
+                        version {record.rulesetVersion} are retained for after-action review.
+                    </span>
                 </div>
             </div>
         </>

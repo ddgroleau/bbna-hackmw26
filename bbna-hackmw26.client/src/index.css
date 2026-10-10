@@ -220,6 +220,7 @@ td strong + span { font-size: 12px; color: var(--blue); }
 .segmented button { padding: 8px 16px; border: 0; border-radius: 9px; background: none; font-size: 14px; font-weight: 600; color: var(--muted); }
 .segmented button[aria-selected='true'] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgb(20 33 43 / 0.12); }
 textarea { display: block; width: 100%; padding: 18px; border: 1px solid var(--line); border-radius: 12px; line-height: 1.5; resize: vertical; color: var(--ink); }
+textarea.rationale { margin-bottom: 18px; }
 .channels { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; margin: 18px 0; padding: 0; border: 0; font-size: 14px; }
 .channels legend { float: left; margin-right: 22px; padding: 0; font-weight: 600; color: var(--ink); }
 .channels label { display: flex; align-items: center; gap: 8px; }
@@ -245,6 +246,10 @@ textarea { display: block; width: 100%; padding: 18px; border: 1px solid var(--l
 .events time { display: block; font-size: 13px; color: var(--blue); }
 .events strong { display: block; font-size: 17px; }
 .events div span { font-size: 14px; color: var(--blue); }
+.log-id { display: block; padding: 0; text-align: left; white-space: nowrap; }
+.log-id[aria-current] { color: var(--ink); }
+.log-id + span { display: block; font-size: 12px; color: var(--blue); }
+tr[aria-selected="true"] td { background: #f8fafb; }
 .source-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .source-grid .card { display: flex; flex-direction: column; gap: 8px; }
 .source-grid .card-foot { margin-top: auto; border: 0; padding-top: 18px; }

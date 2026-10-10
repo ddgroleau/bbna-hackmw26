@@ -1,0 +1,321 @@
+{
+    "title": "ReadyStatus Weather Decision Matrix",
+    "description": "Maps weather hazards to a recommended facility operating posture. These are prototype mappings, and a manager approves the final status.",
+    "note": "Prototype mappings. Numeric cutoffs are NWS criteria where noted, otherwise configurable review thresholds. A human approves the final status. Missing or stale data is never treated as safe.",
+    "levels": [
+        {
+            "id": "Advisory",
+            "title": "Advisory",
+            "description": "Conditions are worth watching but do not change the schedule."
+        },
+        {
+            "id": "Action",
+            "title": "Action",
+            "description": "Conditions affect travel or the workday. Adjust the schedule or work location."
+        },
+        {
+            "id": "Critical",
+            "title": "Critical",
+            "description": "Conditions threaten safety or access. Close the facility or shelter in place."
+        }
+    ],
+    "hazards": [
+        { "id": "snow", "title": "Snow" },
+        { "id": "snow_ice", "title": "Snow and Ice" },
+        { "id": "cold", "title": "Extreme Cold" },
+        { "id": "wind", "title": "High Wind" },
+        { "id": "heat", "title": "Extreme Heat" },
+        { "id": "fog", "title": "Dense Fog" },
+        { "id": "flood", "title": "Flooding" },
+        { "id": "lightning", "title": "Lightning" },
+        { "id": "thunderstorm", "title": "Severe Thunderstorm" },
+        { "id": "tornado", "title": "Tornado" },
+        { "id": "facility", "title": "Facility Safety" }
+    ],
+    "rules": [
+        {
+            "id": "ADV-SNOW",
+            "level": "Advisory",
+            "posture": "Monitor / normal",
+            "hazard": "snow",
+            "title": "Light snow",
+            "description": "A winter weather advisory is in effect or 1 to 2.9 inches of snow is expected. Operate normally and keep watching conditions.",
+            "trigger": "NWS Winter Weather Advisory, or snow 1-2.9 in",
+            "cutoffs": { "snow_in": { "min": 1, "max": 2.9 } },
+            "basis": "NWS CAP severity; agency occupant emergency plan"
+        },
+        {
+            "id": "ADV-COLD",
+            "level": "Advisory",
+            "posture": "Monitor / normal",
+            "hazard": "cold",
+            "title": "Cold wind chill",
+            "description": "Wind chill is between -9 and -1 °F. Dress for the cold and check that building heat is working.",
+            "trigger": "Wind chill -1 to -9 F",
+            "cutoffs": { "wind_chill_f": { "min": -9, "max": -1 } },
+            "basis": "NWS cold-weather criteria"
+        },
+        {
+            "id": "ADV-WIND",
+            "level": "Advisory",
+            "posture": "Monitor / normal",
+            "hazard": "wind",
+            "title": "Windy conditions",
+            "description": "Sustained winds of 31 to 39 mph or gusts of 46 to 57 mph. Expect difficult driving for high-profile vehicles and loose outdoor objects.",
+            "trigger": "NWS Wind Advisory, or sustained wind 31-39 mph, or gusts 46-57 mph",
+            "cutoffs": { "sustained_mph": { "min": 31, "max": 39 }, "gust_mph": { "min": 46, "max": 57 } },
+            "basis": "NWS Wind Advisory criteria"
+        },
+        {
+            "id": "ADV-HEAT",
+            "level": "Advisory",
+            "posture": "Monitor / normal",
+            "hazard": "heat",
+            "title": "Hot and humid",
+            "description": "Heat index of 105 to 109 °F. Encourage hydration and limit time outdoors.",
+            "trigger": "NWS Heat Advisory, or heat index 105-109 F",
+            "cutoffs": { "heat_index_f": { "min": 105, "max": 109 } },
+            "basis": "NWS Heat Advisory criteria (NWS Kansas City)"
+        },
+        {
+            "id": "ADV-FOG",
+            "level": "Advisory",
+            "posture": "Monitor / normal",
+            "hazard": "fog",
+            "title": "Dense fog",
+            "description": "Visibility is a quarter mile or less. Allow extra commute time and drive with low beams.",
+            "trigger": "NWS Dense Fog Advisory, or visibility <= 0.25 mi",
+            "cutoffs": { "visibility_mi": { "max": 0.25 } },
+            "basis": "NWS Dense Fog Advisory criteria"
+        },
+        {
+            "id": "ADV-FLOOD",
+            "level": "Advisory",
+            "posture": "Monitor / normal",
+            "hazard": "flood",
+            "title": "Flood watch or heavy rain",
+            "description": "A flood watch or advisory is active, or rain is falling at 1 inch per hour or more. Watch for ponding on commute routes.",
+            "trigger": "NWS Flood Watch or Flood Advisory, or rain >= 1 in/hr",
+            "cutoffs": { "rain_rate_in_per_hr": { "min": 1 } },
+            "basis": "NWS flood alert taxonomy; rain rate is a prototype review threshold"
+        },
+        {
+            "id": "ADV-STORM",
+            "level": "Advisory",
+            "posture": "Monitor / normal",
+            "hazard": "lightning",
+            "title": "Lightning nearby",
+            "description": "Lightning within 10 miles. Stay indoors and suspend outdoor work until 30 minutes after the last thunder.",
+            "trigger": "Lightning within 10 mi; suspend outdoor activity until 30 min after last thunder",
+            "cutoffs": { "lightning_distance_mi": { "max": 10 }, "wait_after_last_thunder_min": 30 },
+            "basis": "NWS lightning safety guidance"
+        },
+        {
+            "id": "ACT-DELAY-WINTER",
+            "level": "Action",
+            "posture": "Delayed arrival (2 hours)",
+            "hazard": "snow_ice",
+            "title": "Morning snow or ice, improving",
+            "description": "Ice has begun to accumulate or 3 to 5.9 inches of snow ends before 7 AM, and roads should improve by 10 AM. Delay arrival by two hours to allow plowing and treatment.",
+            "trigger": "Ice >= 0.05 in, or snow 3-5.9 in ending before 7 AM, with roads improving by 10 AM",
+            "cutoffs": { "ice_in": { "min": 0.05 }, "snow_in": { "min": 3, "max": 5.9 }, "ends_before": "07:00", "roads_improving_by": "10:00" },
+            "basis": "MoDOT road-condition categories; OPM delayed-arrival status"
+        },
+        {
+            "id": "ACT-DELAY-FOG",
+            "level": "Action",
+            "posture": "Delayed arrival (2 hours)",
+            "hazard": "fog",
+            "title": "Morning dense fog",
+            "description": "Visibility is a quarter mile or less at the start of the commute and is expected to lift by 10 AM. Delay arrival by two hours.",
+            "trigger": "Visibility <= 0.25 mi at start of commute and forecast to lift by 10 AM",
+            "cutoffs": { "visibility_mi": { "max": 0.25 }, "clears_by": "10:00" },
+            "basis": "NWS Dense Fog Advisory; OPM delayed-arrival status"
+        },
+        {
+            "id": "ACT-DELAY-WIND",
+            "level": "Action",
+            "posture": "Delayed arrival (2 hours)",
+            "hazard": "wind",
+            "title": "Morning wind gusts",
+            "description": "Gusts of 40 mph or more during the morning commute that should subside by 10 AM. Delay arrival by two hours.",
+            "trigger": "Gusts >= 40 mph during morning commute, forecast to subside by 10 AM",
+            "cutoffs": { "gust_mph": { "min": 40 }, "subsides_by": "10:00" },
+            "basis": "Prototype review threshold; confirm against local NWS criteria"
+        },
+        {
+            "id": "ACT-DELAY-FLOOD",
+            "level": "Action",
+            "posture": "Delayed arrival (2 hours)",
+            "hazard": "flood",
+            "title": "Morning flooding, receding",
+            "description": "A flood advisory or watch overlaps the commute, or 1 to 5.9 inches of water stands on a key route and should recede by 10 AM. Delay arrival by two hours.",
+            "trigger": "NWS Flood Advisory/Watch overlapping the morning commute, or standing water on a critical route expected to recede by 10 AM",
+            "cutoffs": { "route_water_depth_in": { "min": 1, "max": 5.9 } },
+            "basis": "NWS flood safety; MoDOT traveler map"
+        },
+        {
+            "id": "ACT-EARLY-WINTER",
+            "level": "Action",
+            "posture": "Early departure",
+            "hazard": "snow_ice",
+            "title": "Snow or ice arriving during the workday",
+            "description": "A warning-level event starts before 5 PM, with at least 2 inches of snow or any ice. Release employees early so they can travel before conditions worsen.",
+            "trigger": "Warning-level hazard starting during office hours: snow >= 2 in or any ice before 5 PM",
+            "cutoffs": { "snow_in": { "min": 2 }, "ice_in": { "min": 0.01 }, "onset_before": "17:00" },
+            "basis": "NWS warning onset time; evening commute window"
+        },
+        {
+            "id": "ACT-EARLY-STORM",
+            "level": "Action",
+            "posture": "Early departure",
+            "hazard": "thunderstorm",
+            "title": "Severe storms before the evening commute",
+            "description": "A severe thunderstorm watch or warning is expected to reach the area during the evening commute, with hail of 1 inch or more or gusts of 58 mph or more. Release employees early only if departure is still safe.",
+            "trigger": "Severe Thunderstorm Watch/Warning forecast to reach the area during the evening commute (hail >= 1 in or gusts >= 58 mph)",
+            "cutoffs": { "hail_in": { "min": 1 }, "gust_mph": { "min": 58 } },
+            "basis": "NWS severe thunderstorm criteria; departure must still be safe"
+        },
+        {
+            "id": "ACT-EARLY-HEAT",
+            "level": "Action",
+            "posture": "Early departure",
+            "hazard": "heat",
+            "title": "Heat with weak cooling",
+            "description": "Heat index is 105 °F or higher and indoor cooling is not keeping up. Release employees early to avoid heat illness.",
+            "trigger": "Heat index >= 105 F with indoor cooling degraded",
+            "cutoffs": { "heat_index_f": { "min": 105 } },
+            "basis": "NWS Heat Advisory criteria; facility HVAC status"
+        },
+        {
+            "id": "ACT-TELEWORK-COLD",
+            "level": "Action",
+            "posture": "Unscheduled telework",
+            "hazard": "cold",
+            "title": "Dangerous wind chill",
+            "description": "Wind chill is -20 °F or colder during the morning commute, but roads are passable. Eligible employees may work remotely.",
+            "trigger": "Wind chill <= -20 F during the morning commute while roads stay passable",
+            "cutoffs": { "wind_chill_f": { "max": -20 } },
+            "basis": "NWS cold-weather warning criteria; OPM unscheduled leave and telework option"
+        },
+        {
+            "id": "ACT-TELEWORK-HEAT",
+            "level": "Action",
+            "posture": "Unscheduled telework",
+            "hazard": "heat",
+            "title": "Excessive heat",
+            "description": "An excessive heat warning is in effect or the heat index is 110 °F or higher. Eligible employees may work remotely.",
+            "trigger": "NWS Excessive Heat Warning, or heat index >= 110 F",
+            "cutoffs": { "heat_index_f": { "min": 110 } },
+            "basis": "NWS Excessive Heat Warning criteria (NWS Kansas City)"
+        },
+        {
+            "id": "ACT-TELEWORK-ROUTE",
+            "level": "Action",
+            "posture": "Unscheduled telework",
+            "hazard": "flood",
+            "title": "Flooded access route",
+            "description": "A critical access route is closed or has 6 inches or more of water, and no safe alternate exists. The building is safe, so eligible employees may work remotely.",
+            "trigger": "Critical access route closed or flooded (water >= 6 in) with no verified alternate, facility itself safe",
+            "cutoffs": { "route_water_depth_in": { "min": 6 } },
+            "basis": "NWS 'Turn Around, Don't Drown' (6 in can stall or sweep a vehicle); MoDOT closures"
+        },
+        {
+            "id": "ACT-TELEWORK-WIND",
+            "level": "Action",
+            "posture": "Unscheduled telework",
+            "hazard": "wind",
+            "title": "High wind warning",
+            "description": "A high wind warning is in effect, with sustained winds of 40 mph or more or gusts of 58 mph or more. Travel is hazardous, so eligible employees may work remotely.",
+            "trigger": "NWS High Wind Warning, or sustained >= 40 mph, or gusts >= 58 mph",
+            "cutoffs": { "sustained_mph": { "min": 40 }, "gust_mph": { "min": 58 } },
+            "basis": "NWS High Wind Warning criteria"
+        },
+        {
+            "id": "CRIT-WINTER",
+            "level": "Critical",
+            "posture": "Office closed",
+            "hazard": "snow_ice",
+            "title": "Major winter storm",
+            "description": "A winter storm, ice storm or blizzard warning covers the workday, snow is 6 inches or more, ice is a quarter inch or more, or roads are snow covered. The office is closed.",
+            "trigger": "NWS Winter Storm, Ice Storm, or Blizzard Warning through the workday, snow >= 6 in, ice >= 0.25 in, or roads covered",
+            "cutoffs": { "snow_in": { "min": 6 }, "ice_in": { "min": 0.25 }, "road_condition": "covered" },
+            "basis": "NWS warning taxonomy; OPM closure status; agency continuity plan"
+        },
+        {
+            "id": "CRIT-COLD",
+            "level": "Critical",
+            "posture": "Office closed",
+            "hazard": "cold",
+            "title": "Life-threatening cold",
+            "description": "Wind chill is -35 °F or colder, or the heat has failed and the building is below 60 °F. The office is closed.",
+            "trigger": "Wind chill <= -35 F, or heating failure with unsafe indoor temperature (< 60 F)",
+            "cutoffs": { "wind_chill_f": { "max": -35 }, "indoor_temp_f": { "max": 60 } },
+            "basis": "NWS Extreme Cold Warning escalation; facility safety"
+        },
+        {
+            "id": "CRIT-TORNADO",
+            "level": "Critical",
+            "posture": "Office closed / shelter in place",
+            "hazard": "tornado",
+            "title": "Tornado warning at the facility",
+            "description": "A tornado warning covers the facility. Move everyone to shelter now. Do not send people onto the road.",
+            "trigger": "Tornado Warning polygon intersects the facility",
+            "cutoffs": {},
+            "basis": "NWS Tornado Warning; facility emergency plan. Do not send occupants onto roads."
+        },
+        {
+            "id": "CRIT-FLASHFLOOD",
+            "level": "Critical",
+            "posture": "Office closed",
+            "hazard": "flood",
+            "title": "Flash flood threat",
+            "description": "A flash flood warning covers the facility or its access, water on the access route is 12 inches or deeper, or an evacuation order is in place. The office is closed.",
+            "trigger": "Flash Flood Warning covering the facility or critical access, water >= 12 in on access route, or official evacuation order",
+            "cutoffs": { "route_water_depth_in": { "min": 12 } },
+            "basis": "NWS flash flood warning; 12 in floats most cars"
+        },
+        {
+            "id": "CRIT-STORM",
+            "level": "Critical",
+            "posture": "Office closed / shelter in place",
+            "hazard": "thunderstorm",
+            "title": "Storm damage",
+            "description": "A severe thunderstorm warning is active and the facility is damaged, power lines are down, or a key route is blocked. Shelter in place and close the office.",
+            "trigger": "Severe Thunderstorm Warning with confirmed facility damage, downed power lines, or blocked critical route",
+            "cutoffs": {},
+            "basis": "NWS severe thunderstorm warning; verified facility condition"
+        },
+        {
+            "id": "CRIT-HEAT",
+            "level": "Critical",
+            "posture": "Office closed",
+            "hazard": "heat",
+            "title": "Dangerous heat",
+            "description": "The building has reached 85 °F or higher after cooling failed, or the heat index is 115 °F or higher. The office is closed.",
+            "trigger": "Indoor temperature >= 85 F after HVAC failure, or Extreme Heat Warning with heat index >= 115 F",
+            "cutoffs": { "indoor_temp_f": { "min": 85 }, "heat_index_f": { "min": 115 } },
+            "basis": "NWS Extreme Heat criteria; facility safety"
+        },
+        {
+            "id": "CRIT-FACILITY",
+            "level": "Critical",
+            "posture": "Office closed",
+            "hazard": "facility",
+            "title": "Facility unsafe",
+            "description": "The building is not safe to occupy, or power, water or heat has failed in a way that makes it unsafe. The office is closed.",
+            "trigger": "Facility not safe to occupy, or critical systems (power, water, heat) failed and unsafe",
+            "cutoffs": {},
+            "basis": "Verified facility condition; agency continuity plan"
+        }
+    ],
+    "data_quality": {
+        "dot_data_stale_after_minutes": 15,
+        "rules": [
+            "Expired or cancelled alerts are not active.",
+            "An alert must intersect the facility or a relevant commute area to apply.",
+            "Unknown road conditions are not clear roads.",
+            "If critical data is missing or stale, return INSUFFICIENT_EVIDENCE and request manager review."
+        ]
+    }
+}

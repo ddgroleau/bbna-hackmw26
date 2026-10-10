@@ -77,6 +77,33 @@ namespace bbna_hackmw26.Server.Weather
         /// <summary>When the hazard itself is expected to end. Often null; fall back to Expires.</summary>
         public DateTimeOffset? Ends { get; init; }
 
+        // --- Storm details. NWS only includes these on storm-related alerts (mainly Tornado and
+        // --- Severe Thunderstorm Warnings); on every other alert they are null.
+
+        /// <summary>How the tornado was detected: "RADAR INDICATED" (radar shows rotation) or "OBSERVED" (a tornado has been seen).</summary>
+        public string? TornadoDetection { get; init; }
+
+        /// <summary>
+        /// Extra tornado threat tag on the most dangerous warnings: "CONSIDERABLE" (a "particularly dangerous
+        /// situation") or "CATASTROPHIC" (a Tornado Emergency: a confirmed, violent tornado heading for a populated area).
+        /// </summary>
+        public string? TornadoDamageThreat { get; init; }
+
+        /// <summary>Severe thunderstorm damage tag: "CONSIDERABLE" or "DESTRUCTIVE" (e.g. 80+ mph winds or baseball-size hail).</summary>
+        public string? ThunderstormDamageThreat { get; init; }
+
+        /// <summary>Largest expected hail, in inches (e.g. 1.75 = golf ball size).</summary>
+        public double? MaxHailSizeInches { get; init; }
+
+        /// <summary>Strongest expected wind gust, in mph.</summary>
+        public double? MaxWindGustMph { get; init; }
+
+        /// <summary>True if a tornado has actually been seen, not just indicated on radar.</summary>
+        public bool IsConfirmedTornado => TornadoDetection == "OBSERVED";
+
+        /// <summary>True for a Tornado Emergency, the most serious tornado alert NWS issues.</summary>
+        public bool IsTornadoEmergency => TornadoDamageThreat == "CATASTROPHIC";
+
         /// <summary>
         /// Builds the alerts response from the raw NWS alerts JSON (a GeoJSON "FeatureCollection"
         /// with one "feature" per alert), sorted most serious first.
@@ -118,7 +145,44 @@ namespace bbna_hackmw26.Server.Weather
             Onset = ReadTimestamp(p, "onset"),
             Expires = ReadTimestamp(p, "expires"),
             Ends = ReadTimestamp(p, "ends"),
+
+            // Storm details live in the alert's "parameters" object (absent on most alerts).
+            TornadoDetection = ReadParameter(p, "tornadoDetection"),
+            TornadoDamageThreat = ReadParameter(p, "tornadoDamageThreat"),
+            ThunderstormDamageThreat = ReadParameter(p, "thunderstormDamageThreat"),
+            MaxHailSizeInches = ReadNumber(ReadParameter(p, "maxHailSize")),   // e.g. "1.00" or "Up to .75"
+            MaxWindGustMph = ReadNumber(ReadParameter(p, "maxWindGust")),      // e.g. "70 MPH"
         };
+
+        /// <summary>
+        /// Reads one value from the alert's "parameters" object. NWS stores each parameter as a list
+        /// of text values, e.g. "maxWindGust": ["70 MPH"]; we take the first. Null if absent.
+        /// </summary>
+        private static string? ReadParameter(JsonElement props, string name)
+        {
+            if (!props.TryGetProperty("parameters", out var parameters) || parameters.ValueKind != JsonValueKind.Object) return null;
+            if (!parameters.TryGetProperty(name, out var values) || values.ValueKind != JsonValueKind.Array) return null;
+
+            foreach (var value in values.EnumerateArray())
+            {
+                if (value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString()))
+                    return value.GetString()!.Trim().ToUpperInvariant();
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Pulls the first number out of NWS text like "70 MPH", "1.00" or "UP TO .75". Null if there's no number.
+        /// </summary>
+        private static double? ReadNumber(string? text)
+        {
+            if (text is null) return null;
+            var match = System.Text.RegularExpressions.Regex.Match(text, @"\d*\.?\d+");
+            return match.Success && double.TryParse(match.Value, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var number)
+                ? number
+                : null;
+        }
 
         // ---------------------------------------------------------------------
         // Sorting helpers

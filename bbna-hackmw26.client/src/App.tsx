@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { fetchAnalysis, fetchLiveWeather, fetchSituation } from './api';
-import type { AnalysisState, Decision, LiveWeather, Posture, Situation } from './api';
+import { useEffect, useRef, useState } from 'react';
+import { ensureDecisionRecord, fetchAnalysis, fetchLiveWeather, fetchSituation } from './api';
+import type { AnalysisState, Decision, DecisionRecordDetail, LiveWeather, Posture, Situation } from './api';
 import { Icon } from './components';
 import { POSTURES, formatCount, formatTime, useNow } from './format';
 import { DecisionRecordPage } from './pages/DecisionRecord';
@@ -38,6 +38,11 @@ function App() {
     const [decision, setDecision] = useState<Decision>();
     const [analysis, setAnalysis] = useState<AnalysisState>({ status: 'loading' });
     const [liveWeather, setLiveWeather] = useState<{ data?: LiveWeather; error?: string }>({});
+    const [record, setRecord] = useState<DecisionRecordDetail>();
+    const [recordError, setRecordError] = useState<string>();
+    // The recommendation the current record was opened for. Refreshing evidence that leads to the
+    // same recommendation keeps the record; a new recommendation opens a new one.
+    const recordFor = useRef<string>(undefined);
 
     useEffect(() => {
         let cancelled = false;
@@ -67,6 +72,7 @@ function App() {
 
     useEffect(() => {
         let cancelled = false;
+
         fetchSituation(scenario)
             .then(data => {
                 if (cancelled) return;
@@ -82,6 +88,29 @@ function App() {
         return () => { cancelled = true; };
     }, [scenario, reloads]);
 
+    // The decision record is opened for the agent's recommendation, so it waits for the analysis.
+    const liveReading = liveWeather.data;
+    useEffect(() => {
+        if (!situation || analysis.status !== 'ready') return;
+        // A scenario's analysis can arrive before that scenario's situation has replaced the previous one.
+        if (scenario && situation.scenario !== scenario) return;
+
+        const key = `${source}:${analysis.data.posture}:${situation.thresholds.rulesetVersion}`;
+        if (recordFor.current === key) return;
+        recordFor.current = key;
+        ensureDecisionRecord({ situation, analysis: analysis.data, live: !scenario, liveWeather: liveReading })
+            .then(detail => {
+                if (recordFor.current !== key) return;
+                setRecord(detail);
+                setRecordError(undefined);
+            })
+            .catch((e: Error) => {
+                if (recordFor.current !== key) return;
+                recordFor.current = undefined; // let the next refresh try again
+                setRecordError(e.message);
+            });
+    }, [situation, analysis, source, scenario, liveReading]);
+
     function refresh() {
         setLoading(true);
         setAnalysis({ status: 'loading' });
@@ -96,6 +125,8 @@ function App() {
         setDraftPosture(undefined);
         setEdits({});
         setDecision(undefined);
+        setRecord(undefined);
+        setRecordError(undefined);
     }
 
     function selectTab(id: Tab) {
@@ -176,16 +207,19 @@ function App() {
                         <NotificationsPage
                             situation={situation}
                             analysis={recommended}
-                            posture={decision?.posture ?? posture}
+                            posture={decision?.posture ?? record?.record.finalPosture ?? posture}
                             onPostureChange={setDraftPosture}
                             edits={edits}
                             onEdit={(key, message) => setEdits(current => ({ ...current, [key]: message }))}
                             decision={decision}
                             onSent={setDecision}
+                            record={record}
+                            recordError={recordError}
+                            onRecorded={setRecord}
                         />
                     )}
-                    {tab === 'record' && <DecisionRecordPage situation={situation} analysis={recommended} live={!scenario} decision={decision} />}
-                    {tab === 'thresholds' && <ThresholdsPage situation={situation} />}
+                    {tab === 'record' && <DecisionRecordPage current={record} />}
+                    {tab === 'thresholds' && <ThresholdsPage />}
                 </main>
             </div>
         </div>

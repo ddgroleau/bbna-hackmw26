@@ -1,8 +1,30 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace bbna_hackmw26.Server.Audit
 {
-    public enum FacilityStatus { Open, Closed }
+    // Operating postures, serialized with the same ids the client uses.
+    public enum Posture
+    {
+        [JsonStringEnumMemberName("normal")] Normal,
+        [JsonStringEnumMemberName("delay")] Delay,
+        [JsonStringEnumMemberName("early_dismissal")] EarlyDismissal,
+        [JsonStringEnumMemberName("telework")] Telework,
+        [JsonStringEnumMemberName("closure")] Closure,
+    }
+
+    public static class PostureLabels
+    {
+        public static string Label(this Posture posture) => posture switch
+        {
+            Posture.Normal => "Normal operations",
+            Posture.Delay => "Delayed arrival",
+            Posture.EarlyDismissal => "Early departure",
+            Posture.Telework => "Unscheduled telework",
+            Posture.Closure => "Office closed",
+            _ => posture.ToString(),
+        };
+    }
 
     public enum DecisionStatus { AwaitingDecision, Decided }
 
@@ -17,11 +39,25 @@ namespace bbna_hackmw26.Server.Audit
 
     // Requests
 
+    // The single body POST /api/decisions accepts. Without a RecordId it opens a new record from the
+    // recommendation fields; with one it records the human decision (FinalPosture, Rationale) on that record.
+    public record DecisionLogRequest(
+        string? RecordId,
+        Posture? FinalPosture,
+        string? Rationale,
+        string? FacilityCode,
+        string? FacilityName,
+        Posture? RecommendedPosture,
+        string? Reason,
+        string? RulesetVersion,
+        EvidenceInput? Evidence);
+
+
     // Facility fields fall back to the configured Building when omitted.
     public record CreateDecisionRequest(
         string? FacilityCode,
         string? FacilityName,
-        FacilityStatus RecommendedStatus,
+        Posture RecommendedPosture,
         string Reason,
         string RulesetVersion,
         EvidenceInput Evidence);
@@ -30,7 +66,7 @@ namespace bbna_hackmw26.Server.Audit
     public record EvidenceInput(string Summary, JsonElement? Sources);
 
     // The decision is attributed to the current viewer; see DecisionLogStore.CurrentUser.
-    public record RecordDecisionRequest(FacilityStatus FinalStatus, string? Rationale);
+    public record RecordDecisionRequest(Posture FinalPosture, string? Rationale);
 
     public record ClientInfo(string? IpAddress, string? UserAgent);
 
@@ -41,10 +77,10 @@ namespace bbna_hackmw26.Server.Audit
         string FacilityCode,
         string FacilityName,
         DecisionStatus Status,
-        FacilityStatus RecommendedStatus,
+        Posture RecommendedPosture,
         string RecommendationReason,
         string RulesetVersion,
-        FacilityStatus? FinalStatus,
+        Posture? FinalPosture,
         DecisionAction? Action,
         string? DecidedBy,
         DateTimeOffset? DecidedAt,
