@@ -1,58 +1,53 @@
 {
-  "id": "kcps-lincoln-prep",
-  "name": "Lincoln College Preparatory Academy",
-  "shortName": "Lincoln College Prep",
-  "type": "school",
-  "organization": "Kansas City Public Schools",
-  "grades": "9–12",
+  "id": "usda-ers-kc",
+  "recordPrefix": "ERSKC",
+  "name": "USDA Economic Research Service – Kansas City",
+  "shortName": "ERS Kansas City",
+  "type": "federal office",
+  "organization": "USDA Economic Research Service",
   "address": {
-    "street": "2111 Woodland Ave",
+    "street": "805 Pennsylvania Ave",
     "city": "Kansas City",
     "state": "MO",
-    "zip": "64108"
+    "zip": "64105"
   },
   "location": {
-    "latitude": 39.0868,
-    "longitude": -94.5597,
+    "latitude": 39.1045,
+    "longitude": -94.5909,
     "county": "Jackson County, MO",
     "nwsOffice": "EAX",
-    "nwsGridX": 44,
-    "nwsGridY": 50,
+    "nwsGridX": 43,
+    "nwsGridY": 51,
     "nwsForecastZone": "MOZ037",
     "nwsCountyZone": "MOC095"
   },
   "timeZone": "America/Chicago",
   "timeZoneLabel": "CT",
   "hours": {
-    "opens": "07:30",
-    "closes": "14:30",
-    "label": "7:30 AM–2:30 PM",
+    "opens": "08:00",
+    "closes": "17:00",
+    "label": "8 AM–5 PM",
     "days": [ "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" ]
   },
   "population": {
-    "staff": 96,
-    "teachers": 62,
-    "supportStaff": 34,
-    "essentialStaff": 8,
-    "students": 1010,
-    "busRiders": 610,
-    "busRoutes": 18,
-    "guardianContacts": 1640
+    "employees": 75,
+    "essentialPersonnel": 10,
+    "teleworkEligible": 55
   },
+  "hazards": [ "Ice storms", "Tornadoes", "Flooding" ],
   "essentialRoles": [
-    "Principal",
-    "Assistant principal on duty",
-    "Head custodian",
-    "Custodial crew (2)",
-    "School security officer (2)",
-    "Cafeteria manager"
+    "Facility manager",
+    "IT operations (3)",
+    "Security liaison (2)",
+    "Data release coordinator (2)",
+    "Building engineer (2)"
   ],
   "decisionSchedule": [
-    { "kind": "assessment", "time": "04:00", "title": "Automated assessment", "detail": "Feeds captured" },
-    { "kind": "decision", "time": "05:00", "title": "Decision due", "detail": "Before first bus pull-out" },
+    { "kind": "assessment", "time": "04:30", "title": "Automated assessment", "detail": "NWS and MoDOT feeds captured" },
+    { "kind": "decision", "time": "05:00", "title": "Decision due", "detail": "Manager approval required" },
     { "kind": "notify", "time": "05:30", "title": "Notification target", "detail": "SMS, voice, and email" },
-    { "kind": "transport", "time": "06:15", "title": "First bus routes depart", "detail": "18 routes, 610 riders" },
-    { "kind": "open", "time": "07:30", "title": "First bell", "detail": "If posture is unchanged" }
+    { "kind": "commute", "time": "06:30", "title": "Earliest commutes begin", "detail": "Essential and early-shift employees" },
+    { "kind": "open", "time": "08:00", "title": "Office opens", "detail": "If posture is unchanged" }
   ],
-  "dataNote": "Hours and head counts are realistic estimates for a demo, not official district figures."
+  "dataNote": "Real USDA office address. Employee counts, staffing categories, and operating hours are fictional demo values."
 }

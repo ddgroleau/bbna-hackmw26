@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { sendNotification } from '../api';
 import type { Audience, Decision, Posture, Situation } from '../api';
 import { Icon, PageHead } from '../components';
-import { POSTURES, POSTURE_ORDER, formatCount, formatTime } from '../format';
+import { AUDIENCES, AUDIENCE_ORDER, POSTURES, POSTURE_ORDER, formatCount, formatTime } from '../format';
 
-const CHANNELS = ['SMS', 'Email', 'Voice for essential staff'];
+const CHANNELS = ['SMS', 'Email', 'Voice for essential personnel'];
 
 interface Props {
     situation: Situation;
@@ -17,14 +17,14 @@ interface Props {
 }
 
 export function NotificationsPage({ situation, posture, onPostureChange, edits, onEdit, decision, onSent }: Props) {
-    const [audience, setAudience] = useState<Audience>('staff');
+    const [audience, setAudience] = useState<Audience>('teleworkReady');
     const [channels, setChannels] = useState(CHANNELS);
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string>();
 
     const { people, facility, decisionWindow } = situation;
-    const staffCount = people.staff.recipients;
-    const familyCount = people.families.guardianContacts;
+    const recipients = people.staff.recipients;
+    const essentialCount = people.audiences.essential;
     const key = `${posture}:${audience}`;
     const message = edits[key]
         ?? situation.messageTemplates[posture][audience].replaceAll('{day}', decisionWindow.operatingDayLabel);
@@ -37,7 +37,7 @@ export function NotificationsPage({ situation, posture, onPostureChange, edits, 
         setSending(true);
         setError(undefined);
         try {
-            onSent(await sendNotification({ posture, channels, staffRecipients: staffCount, familyContacts: familyCount }));
+            onSent(await sendNotification({ posture, channels, recipients, essentialRecipients: essentialCount }));
         } catch (e) {
             setError(e instanceof Error ? e.message : 'The notification request failed.');
         } finally {
@@ -73,16 +73,15 @@ export function NotificationsPage({ situation, posture, onPostureChange, edits, 
                         )}
 
                         <div className="segmented" role="tablist" aria-label="Audience">
-                            <button role="tab" aria-selected={audience === 'staff'} onClick={() => setAudience('staff')}>
-                                Staff message · {formatCount(staffCount)}
-                            </button>
-                            <button role="tab" aria-selected={audience === 'families'} onClick={() => setAudience('families')}>
-                                Family message · {formatCount(familyCount)}
-                            </button>
+                            {AUDIENCE_ORDER.map(id => (
+                                <button key={id} role="tab" aria-selected={audience === id} onClick={() => setAudience(id)}>
+                                    {AUDIENCES[id]} · {formatCount(people.audiences[id])}
+                                </button>
+                            ))}
                         </div>
 
                         <textarea
-                            aria-label={`${audience === 'staff' ? 'Staff' : 'Family'} message`}
+                            aria-label={`${AUDIENCES[audience]} message`}
                             value={message}
                             onChange={e => onEdit(key, e.target.value)}
                             readOnly={!!decision}
@@ -107,13 +106,13 @@ export function NotificationsPage({ situation, posture, onPostureChange, edits, 
                         {decision ? (
                             <p className="banner tone-ok">
                                 <Icon name="check" />
-                                Released at {formatTime(decision.sentAt, facility.timeZone)} {facility.timeZoneLabel} to {formatCount(decision.staffRecipients)} staff
-                                and {formatCount(decision.familyContacts)} family contacts. Simulated: no messages left the system.
+                                Released at {formatTime(decision.sentAt, facility.timeZone)} {facility.timeZoneLabel} to {formatCount(decision.recipients)} employees,
+                                including {formatCount(decision.essentialRecipients)} essential personnel. Simulated: no messages left the system.
                             </p>
                         ) : (
                             <button className="btn btn-primary btn-wide" onClick={send} disabled={sending || channels.length === 0}>
                                 <Icon name="send" />
-                                {sending ? 'Sending…' : `Approve and send to ${formatCount(staffCount)} staff and ${formatCount(familyCount)} family contacts`}
+                                {sending ? 'Sending…' : `Approve and send to ${formatCount(recipients)} employees`}
                             </button>
                         )}
                         {error && <p className="error-text">{error}</p>}
@@ -123,14 +122,14 @@ export function NotificationsPage({ situation, posture, onPostureChange, edits, 
                         <div className="section-head">
                             <div>
                                 <h2>Recipient review</h2>
-                                <p className="small">{people.sample.length} representative records from the staff roster.</p>
+                                <p className="small">{people.sample.length} representative records from the employee roster.</p>
                             </div>
                             <span className="small">{people.staff.recipients} included · {people.staff.excluded} excluded</span>
                         </div>
                         <div className="table-scroll">
                             <table className="data">
                                 <thead>
-                                    <tr><th>Staff member</th><th>Decision logic</th><th>Routing</th><th>Status</th></tr>
+                                    <tr><th>Employee</th><th>Decision logic</th><th>Routing</th><th>Status</th></tr>
                                 </thead>
                                 <tbody>
                                     {people.sample.map(person => (
@@ -167,8 +166,9 @@ export function NotificationsPage({ situation, posture, onPostureChange, edits, 
                         ))}
                     </ol>
                     <dl className="facts compact">
-                        <div><dt>Students</dt><dd>{formatCount(people.families.students)}</dd></div>
-                        <div><dt>Family contacts</dt><dd>{formatCount(familyCount)}</dd></div>
+                        {AUDIENCE_ORDER.map(id => (
+                            <div key={id}><dt>{AUDIENCES[id]}</dt><dd>{formatCount(people.audiences[id])}</dd></div>
+                        ))}
                     </dl>
                     <div className="callout">
                         <Icon name="users" />

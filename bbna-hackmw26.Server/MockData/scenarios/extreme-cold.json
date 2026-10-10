@@ -1,22 +1,22 @@
 {
   "id": "extreme-cold",
-  "label": "Extreme cold (remote learning)",
+  "label": "Extreme cold (unscheduled telework)",
   "recommendation": {
     "posture": "telework",
     "level": "action",
     "confidence": 81,
-    "thresholdSummary": "Action threshold crossed: wind chill −24°F during bus-stop hours",
-    "explanation": "An Extreme Cold Warning is in effect with wind chills near −24°F between 5 and 8 AM, when 610 students would be waiting at bus stops. Roads are clear and the building has heat, so the hazard is exposure rather than travel. A remote learning (AMI) day keeps instruction going without putting students outdoors.",
-    "whatCouldChange": "Wind chills forecast above −20°F by 6 AM would support a delayed start. A heating or power failure in the building would support a full closure.",
+    "thresholdSummary": "Action threshold crossed: wind chill −24°F during the morning commute",
+    "explanation": "An Extreme Cold Warning is in effect with wind chills near −24°F between 5 and 8 AM, when employees would be walking from parking and transit stops. Roads are clear and the building has heat, so the hazard is exposure rather than travel. Keeping the office open with unscheduled telework lets 51 telework-ready employees stay home while on-site and essential staff can still report.",
+    "whatCouldChange": "Wind chills forecast above −20°F by 7 AM would support a normal day. A heating or power failure in the building would support a full closure.",
     "triggers": [
-      { "rule": "Wind chill at bus-stop hours", "observed": "−24°F", "threshold": "≤ −20°F", "crossed": true },
+      { "rule": "Wind chill at commute hours", "observed": "−24°F", "threshold": "≤ −20°F", "crossed": true },
       { "rule": "Active NWS alerts", "observed": "Extreme Cold Warning", "threshold": "Warning", "crossed": true },
       { "rule": "Road condition", "observed": "Clear", "threshold": "Covered", "crossed": false }
     ],
     "alternatives": [
-      { "posture": "delay", "note": "Wind chill is still below the cutoff at 9 AM, so a 2-hour delay does not clear it." },
-      { "posture": "closure", "note": "Defensible, but uses a make-up day when instruction can continue remotely." },
-      { "posture": "normal", "note": "Exposes bus riders to frostbite risk in under 30 minutes." }
+      { "posture": "delay", "note": "Wind chill is still below the cutoff at 10 AM, so a 2-hour delay does not clear it." },
+      { "posture": "closure", "note": "Defensible, but closes the building when roads are clear and it has heat." },
+      { "posture": "normal", "note": "Exposes commuters to frostbite risk in under 30 minutes." }
     ]
   },
   "weather": {
@@ -34,11 +34,11 @@
     "forecast": [
       { "period": "Overnight", "window": "12–5 AM", "shortForecast": "Clear and bitterly cold", "temperatureF": -7, "windChillF": -26, "windDirection": "NW", "windSpeedMph": 14, "windGustMph": 22, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 },
       { "period": "Morning commute", "window": "5–8 AM", "shortForecast": "Sunny and bitterly cold", "temperatureF": -5, "windChillF": -24, "windDirection": "NW", "windSpeedMph": 13, "windGustMph": 21, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 },
-      { "period": "School day", "window": "8 AM–2 PM", "shortForecast": "Sunny", "temperatureF": 6, "windChillF": -10, "windDirection": "NW", "windSpeedMph": 11, "windGustMph": 18, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 },
-      { "period": "Dismissal", "window": "2–4 PM", "shortForecast": "Sunny", "temperatureF": 9, "windChillF": -6, "windDirection": "W", "windSpeedMph": 9, "windGustMph": 15, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 },
-      { "period": "Evening", "window": "4–9 PM", "shortForecast": "Clear", "temperatureF": 2, "windChillF": -12, "windDirection": "W", "windSpeedMph": 7, "windGustMph": 12, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 }
+      { "period": "Workday", "window": "8 AM–4 PM", "shortForecast": "Sunny", "temperatureF": 7, "windChillF": -9, "windDirection": "NW", "windSpeedMph": 11, "windGustMph": 18, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening commute", "window": "4–6 PM", "shortForecast": "Sunny", "temperatureF": 6, "windChillF": -8, "windDirection": "W", "windSpeedMph": 9, "windGustMph": 15, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening", "window": "6–10 PM", "shortForecast": "Clear", "temperatureF": 1, "windChillF": -13, "windDirection": "W", "windSpeedMph": 7, "windGustMph": 12, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 }
     ],
     "totals": { "snowIn": 0, "iceIn": 0, "minWindChillF": -26, "maxGustMph": 22 },
-    "roads": { "status": "Clear", "detail": "All monitored routes near the school report clear, dry pavement." }
+    "roads": { "status": "Clear", "detail": "All monitored routes near the office report clear, dry pavement." }
   }
 }

@@ -1,5 +1,5 @@
 export type Posture = 'normal' | 'delay' | 'early_dismissal' | 'telework' | 'closure';
-export type Audience = 'staff' | 'families';
+export type Audience = 'teleworkReady' | 'onsite' | 'essential';
 
 export interface Facility {
     id: string;
@@ -7,20 +7,17 @@ export interface Facility {
     shortName: string;
     type: string;
     organization: string;
-    grades: string;
     address: { street: string; city: string; state: string; zip: string };
     location: { county: string; nwsOffice: string; nwsGridX: number; nwsGridY: number };
     timeZone: string;
     timeZoneLabel: string;
     hours: { opens: string; closes: string; label: string; days: string[] };
     population: {
-        staff: number;
-        essentialStaff: number;
-        students: number;
-        busRiders: number;
-        busRoutes: number;
-        guardianContacts: number;
+        employees: number;
+        essentialPersonnel: number;
+        teleworkEligible: number;
     };
+    hazards: string[];
     dataNote: string;
 }
 
@@ -87,7 +84,7 @@ export interface Weather {
 }
 
 export interface DecisionStep {
-    kind: 'assessment' | 'decision' | 'notify' | 'transport' | 'open';
+    kind: 'assessment' | 'decision' | 'notify' | 'commute' | 'open';
     title: string;
     detail: string;
     at: string;
@@ -111,7 +108,7 @@ export interface People {
         essential: number;
         steps: { label: string; detail: string; final?: boolean }[];
     };
-    families: { students: number; guardianContacts: number; busRiders: number; busRoutes: number };
+    audiences: Record<Audience, number>;
     accessibility: { title: string; detail: string };
     sample: { name: string; role: string; logic: string; routing: string[]; included: boolean }[];
     dataNote: string;
@@ -141,8 +138,8 @@ export interface Situation {
 export interface NotifyRequest {
     posture: Posture;
     channels: string[];
-    staffRecipients: number;
-    familyContacts: number;
+    recipients: number;
+    essentialRecipients: number;
 }
 
 export interface Decision extends NotifyRequest {
