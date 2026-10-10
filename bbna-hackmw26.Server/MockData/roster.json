@@ -1,0 +1,34 @@
+{
+  "dataNote": "Fictional people and estimated counts for a demo.",
+  "resolvedAgainst": "Roster resolved against today's staff attendance file.",
+  "staff": {
+    "assigned": 96,
+    "recipients": 89,
+    "excluded": 7,
+    "essential": 8,
+    "steps": [
+      { "label": "96 staff assigned to building", "detail": "District HR roster", "delta": 96 },
+      { "label": "4 on approved leave", "detail": "No commute impact", "delta": -4 },
+      { "label": "3 at district training", "detail": "Different duty location", "delta": -3 },
+      { "label": "89 final staff recipients", "detail": "8 get the essential-staff addendum", "delta": 89, "final": true }
+    ]
+  },
+  "families": {
+    "students": 1010,
+    "guardianContacts": 1640,
+    "busRiders": 610,
+    "busRoutes": 18
+  },
+  "accessibility": {
+    "title": "Accessibility routing",
+    "detail": "2 staff receive text-first messages and TTY-compatible email. 214 family contacts receive the Spanish-language version."
+  },
+  "sample": [
+    { "name": "Renee Whitfield", "role": "Principal", "logic": "Essential staff", "routing": [ "SMS", "Voice", "Email" ], "included": true },
+    { "name": "Marcus Odom", "role": "Head Custodian", "logic": "Essential staff", "routing": [ "SMS", "Voice", "Email" ], "included": true },
+    { "name": "Priya Natarajan", "role": "Math Teacher", "logic": "Assigned on-site", "routing": [ "SMS", "Email" ], "included": true },
+    { "name": "Aisha Coleman", "role": "Cafeteria Manager", "logic": "Essential staff", "routing": [ "SMS", "Voice", "Email" ], "included": true },
+    { "name": "Hannah Lindqvist", "role": "School Counselor", "logic": "Approved leave", "routing": [], "included": false },
+    { "name": "Tom Beckett", "role": "Science Teacher", "logic": "At district training", "routing": [], "included": false }
+  ]
+}

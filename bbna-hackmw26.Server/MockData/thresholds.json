@@ -1,0 +1,61 @@
+{
+  "rulesetVersion": "0.1-demo",
+  "dataNote": "Illustrative demo thresholds, not adopted district policy.",
+  "levels": [
+    {
+      "level": "Advisory",
+      "posture": "normal",
+      "postureLabel": "Monitor / normal",
+      "trigger": "NWS advisory in effect, snow 1–2.9 in, or wind chill −1 to −9°F",
+      "basis": "NWS CAP severity; district inclement-weather procedure"
+    },
+    {
+      "level": "Action",
+      "posture": "delay",
+      "postureLabel": "Delayed start (2 hours)",
+      "trigger": "Ice ≥ 0.05 in or snow 3–5.9 in ending before 7 AM, with roads improving by 9 AM",
+      "basis": "MoDOT road-condition categories; bus operations guidance"
+    },
+    {
+      "level": "Action",
+      "posture": "early_dismissal",
+      "postureLabel": "Early dismissal",
+      "trigger": "Warning-level hazard starting during school hours: ≥ 2 in snow or any ice before 4 PM",
+      "basis": "NWS warning onset time; bus route run time"
+    },
+    {
+      "level": "Action",
+      "posture": "telework",
+      "postureLabel": "Remote learning (AMI day)",
+      "trigger": "Wind chill ≤ −20°F during bus-stop hours while roads stay passable",
+      "basis": "NWS cold-weather warning criteria; Missouri AMI provisions"
+    },
+    {
+      "level": "Critical",
+      "posture": "closure",
+      "postureLabel": "Full closure",
+      "trigger": "NWS Winter Storm, Ice Storm, or Blizzard Warning through the school day, snow ≥ 6 in, ice ≥ 0.25 in, or roads covered",
+      "basis": "NWS warning taxonomy; district emergency operations plan"
+    }
+  ],
+  "sources": [
+    {
+      "owner": "NWS",
+      "title": "CAP alert fields",
+      "detail": "Severity, certainty, and urgency provide structured, nationally consistent hazard screening.",
+      "reviewed": "Sep 2026"
+    },
+    {
+      "owner": "MoDOT",
+      "title": "Road-condition categories",
+      "detail": "Clear, partly covered, and covered road reports decide whether bus routes can run on time.",
+      "reviewed": "Aug 2026"
+    },
+    {
+      "owner": "District",
+      "title": "Inclement-weather procedure",
+      "detail": "Snow, ice, and wind-chill cutoffs and essential-staff exceptions reflect bus-stop exposure and site conditions.",
+      "reviewed": "Oct 2026"
+    }
+  ]
+}

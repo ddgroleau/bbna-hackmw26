@@ -1,0 +1,44 @@
+{
+  "id": "afternoon-snow",
+  "label": "Afternoon snow (early dismissal)",
+  "recommendation": {
+    "posture": "early_dismissal",
+    "level": "action",
+    "confidence": 79,
+    "thresholdSummary": "Action threshold crossed: warning-level snow starts during school hours",
+    "explanation": "The morning commute is dry, but a Winter Storm Warning begins at 11 AM and 4.5 in of snow is forecast before 4 PM. Roads are expected to become covered between 1 and 3 PM, which is when buses would normally be running. Dismissing at 11:30 AM gets all 18 routes home before conditions deteriorate.",
+    "whatCouldChange": "Snow onset moving earlier than 9 AM would support a closure. Onset slipping past 3 PM would support a normal day.",
+    "triggers": [
+      { "rule": "Snow before 4 PM", "observed": "4.5 in", "threshold": "≥ 2 in", "crossed": true },
+      { "rule": "Warning onset", "observed": "11 AM", "threshold": "During school hours", "crossed": true },
+      { "rule": "Hazard at morning commute", "observed": "None", "threshold": "Any ice or ≥ 3 in snow", "crossed": false }
+    ],
+    "alternatives": [
+      { "posture": "normal", "note": "Puts the 2:30 PM bus run in the heaviest snow." },
+      { "posture": "closure", "note": "Defensible, but gives up a morning with no hazard." },
+      { "posture": "telework", "note": "Avoids the mid-day bus run entirely." }
+    ]
+  },
+  "weather": {
+    "alerts": [
+      {
+        "event": "Winter Storm Warning", "severity": "Severe", "certainty": "Likely", "urgency": "Expected",
+        "timing": "11 AM to midnight", "area": "Jackson County, MO",
+        "headline": "Heavy snow with total accumulations of 6 to 8 inches. Travel could be very difficult for the evening commute."
+      }
+    ],
+    "current": {
+      "conditions": "Cloudy", "temperatureF": 29, "windChillF": 20, "windDirection": "E",
+      "windSpeedMph": 10, "windGustMph": 17, "humidityPct": 71, "visibilityMi": 10
+    },
+    "forecast": [
+      { "period": "Overnight", "window": "12–5 AM", "shortForecast": "Cloudy", "temperatureF": 27, "windChillF": 18, "windDirection": "E", "windSpeedMph": 8, "windGustMph": 14, "precipChancePct": 10, "snowIn": 0, "iceIn": 0 },
+      { "period": "Morning commute", "window": "5–8 AM", "shortForecast": "Cloudy", "temperatureF": 28, "windChillF": 19, "windDirection": "E", "windSpeedMph": 10, "windGustMph": 17, "precipChancePct": 20, "snowIn": 0, "iceIn": 0 },
+      { "period": "School day", "window": "8 AM–2 PM", "shortForecast": "Snow developing after 11 AM", "temperatureF": 30, "windChillF": 20, "windDirection": "NE", "windSpeedMph": 13, "windGustMph": 22, "precipChancePct": 90, "snowIn": 2.5, "iceIn": 0 },
+      { "period": "Dismissal", "window": "2–4 PM", "shortForecast": "Heavy snow", "temperatureF": 28, "windChillF": 16, "windDirection": "NE", "windSpeedMph": 16, "windGustMph": 27, "precipChancePct": 100, "snowIn": 2.0, "iceIn": 0 },
+      { "period": "Evening", "window": "4–9 PM", "shortForecast": "Heavy snow", "temperatureF": 25, "windChillF": 12, "windDirection": "N", "windSpeedMph": 18, "windGustMph": 30, "precipChancePct": 100, "snowIn": 3.0, "iceIn": 0 }
+    ],
+    "totals": { "snowIn": 7.5, "iceIn": 0, "minWindChillF": 12, "maxGustMph": 30 },
+    "roads": { "status": "Clear", "detail": "Clear this morning. Expected to become covered between 1 and 3 PM as snowfall rates reach 1 in per hour." }
+  }
+}

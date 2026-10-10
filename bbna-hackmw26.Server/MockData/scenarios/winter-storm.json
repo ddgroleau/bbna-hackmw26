@@ -1,0 +1,45 @@
+{
+  "id": "winter-storm",
+  "label": "Winter storm (closure)",
+  "recommendation": {
+    "posture": "closure",
+    "level": "critical",
+    "confidence": 88,
+    "thresholdSummary": "Critical threshold crossed: Winter Storm Warning with 7.5 in of snow",
+    "explanation": "A Winter Storm Warning runs through the whole school day. 5.5 in of snow falls before first bell with 7.5 in by evening, and roads near the school are already reported as covered. Wind chills drop to −4°F during bus pull-out. Bus routes cannot run safely in either direction, so a full closure is the supported posture.",
+    "whatCouldChange": "Snow totals dropping below 6 in with the warning ending before 6 AM would support a delayed start.",
+    "triggers": [
+      { "rule": "Active NWS alerts", "observed": "Winter Storm Warning until 6 PM", "threshold": "Warning through the school day", "crossed": true },
+      { "rule": "Storm-total snow", "observed": "7.5 in", "threshold": "≥ 6 in", "crossed": true },
+      { "rule": "Road condition", "observed": "Covered", "threshold": "Covered", "crossed": true },
+      { "rule": "Wind chill at bus-stop hours", "observed": "−4°F", "threshold": "≤ −20°F", "crossed": false }
+    ],
+    "alternatives": [
+      { "posture": "telework", "note": "Keeps instruction going if the district wants to save a make-up day." },
+      { "posture": "delay", "note": "Not supported: snow continues through the school day." },
+      { "posture": "normal", "note": "Not supported: roads are covered and the warning is active." }
+    ]
+  },
+  "weather": {
+    "alerts": [
+      {
+        "event": "Winter Storm Warning", "severity": "Severe", "certainty": "Likely", "urgency": "Expected",
+        "timing": "Until 6 PM", "area": "Jackson County, MO",
+        "headline": "Heavy snow with total accumulations of 6 to 9 inches and gusts to 35 mph. Travel will be very difficult to impossible for the morning commute."
+      }
+    ],
+    "current": {
+      "conditions": "Heavy snow", "temperatureF": 19, "windChillF": 4, "windDirection": "N",
+      "windSpeedMph": 16, "windGustMph": 28, "humidityPct": 88, "visibilityMi": 0.5
+    },
+    "forecast": [
+      { "period": "Overnight", "window": "12–5 AM", "shortForecast": "Heavy snow", "temperatureF": 18, "windChillF": 2, "windDirection": "N", "windSpeedMph": 18, "windGustMph": 30, "precipChancePct": 100, "snowIn": 3.5, "iceIn": 0 },
+      { "period": "Morning commute", "window": "5–8 AM", "shortForecast": "Snow and blowing snow", "temperatureF": 17, "windChillF": -4, "windDirection": "N", "windSpeedMph": 20, "windGustMph": 32, "precipChancePct": 100, "snowIn": 2.0, "iceIn": 0 },
+      { "period": "School day", "window": "8 AM–2 PM", "shortForecast": "Snow", "temperatureF": 20, "windChillF": 5, "windDirection": "N", "windSpeedMph": 16, "windGustMph": 27, "precipChancePct": 90, "snowIn": 1.5, "iceIn": 0 },
+      { "period": "Dismissal", "window": "2–4 PM", "shortForecast": "Light snow", "temperatureF": 21, "windChillF": 8, "windDirection": "NW", "windSpeedMph": 13, "windGustMph": 22, "precipChancePct": 60, "snowIn": 0.5, "iceIn": 0 },
+      { "period": "Evening", "window": "4–9 PM", "shortForecast": "Flurries", "temperatureF": 16, "windChillF": 3, "windDirection": "NW", "windSpeedMph": 10, "windGustMph": 17, "precipChancePct": 20, "snowIn": 0, "iceIn": 0 }
+    ],
+    "totals": { "snowIn": 7.5, "iceIn": 0, "minWindChillF": -4, "maxGustMph": 32 },
+    "roads": { "status": "Covered", "detail": "Snow-covered pavement on I-70, US-71, and city arterials near the school. Plows are working priority routes only." }
+  }
+}

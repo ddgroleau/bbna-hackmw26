@@ -1,0 +1,22 @@
+{
+  "normal": {
+    "staff": "NORMAL OPERATIONS — Lincoln College Prep\n\nSchool is open on a normal schedule on {day}. Report at your regular time. Buses are running their normal routes.\n\nPlease confirm receipt.",
+    "families": "Lincoln College Prep is open on a normal schedule on {day}. Buses are running their normal routes and first bell is at 7:30 AM."
+  },
+  "delay": {
+    "staff": "2-HOUR DELAYED START — Lincoln College Prep\n\nBecause of icy roads, school starts 2 hours late on {day}. Teachers and support staff report by 9:00 AM. First bell is at 9:30 AM. Essential staff report at their normal time and follow the essential-staff addendum.\n\nSupervisors will send any change by 7:00 AM. Please confirm receipt.",
+    "families": "Lincoln College Prep will start 2 hours late on {day} because of icy roads. Buses run 2 hours later than normal and first bell is at 9:30 AM. Breakfast will not be served. Dismissal stays at 2:30 PM."
+  },
+  "early_dismissal": {
+    "staff": "EARLY DISMISSAL — Lincoln College Prep\n\nSchool opens on time on {day} and dismisses at 11:30 AM ahead of heavy snow. Lunch is served at 10:45 AM. After-school activities are cancelled. Staff are released at 12:15 PM once buses have cleared. Essential staff follow the essential-staff addendum.\n\nPlease confirm receipt.",
+    "families": "Lincoln College Prep will dismiss early at 11:30 AM on {day} ahead of heavy snow. Buses leave at 11:40 AM. All after-school activities and athletics are cancelled. Please make sure someone can meet your student."
+  },
+  "telework": {
+    "staff": "REMOTE LEARNING (AMI DAY) — Lincoln College Prep\n\nThe building is closed to students on {day} because of dangerous wind chills. Teachers work from home and post AMI assignments by 8:30 AM. Hold office hours online from 9:00 AM to 12:00 PM. Essential staff report at their normal time and follow the essential-staff addendum.\n\nPlease confirm receipt.",
+    "families": "Lincoln College Prep will hold a remote learning (AMI) day on {day} because of dangerous wind chills. Students should not come to school. Assignments will be posted by 8:30 AM and teachers are available online from 9:00 AM to 12:00 PM. Buses will not run."
+  },
+  "closure": {
+    "staff": "SCHOOL CLOSED — Lincoln College Prep\n\nSchool is closed on {day} because of heavy snow and hazardous roads. Do not report to the building. All activities and athletics are cancelled. Essential staff will be contacted by voice call and should follow the essential-staff addendum.\n\nThe next update will be sent by 4:00 PM. Please confirm receipt.",
+    "families": "Lincoln College Prep is closed on {day} because of heavy snow and hazardous roads. Buses will not run and all activities and athletics are cancelled. We will send an update about the following day by 4:00 PM."
+  }
+}
