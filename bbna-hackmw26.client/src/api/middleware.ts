@@ -76,13 +76,15 @@ async function decisionHistory(): Promise<unknown[] | null> {
   }
 }
 
-// The evidence the agent team works from: a mock scenario, or the live feeds.
-async function loadSources(scenario: string | null, managerNote: string | null): Promise<AnalysisSources> {
+// The evidence the agent team works from: a mock scenario, or the live feeds. Exported for
+// check-scenarios.ts, which runs the team on every scenario exactly as /api/analyze does.
+export async function loadSources(scenario: string | null, managerNote: string | null): Promise<AnalysisSources> {
   const history = decisionHistory();
   if (scenario) {
     // A named scenario replaces the live feeds with that scenario's mock weather.
     const situation = await fetchServerJson(`/api/situation?scenario=${encodeURIComponent(scenario)}`);
-    return { weather: null, alerts: null, forecast: null, situation, managerNote, history: await history };
+    // Past days are matched against the live forecast, so a scenario has none.
+    return { weather: null, alerts: null, forecast: null, situation, similarDays: null, managerNote, history: await history };
   }
   // The raw reading is required. Alerts and facility context sharpen the analysis but must
   // not block it, so a failure there reaches the agent as null and it reports the gap.
@@ -92,7 +94,13 @@ async function loadSources(scenario: string | null, managerNote: string | null):
     fetchServerJson('/api/weather/forecast').catch(() => null),
     fetchServerJson('/api/situation').catch(() => null),
   ]);
-  return { weather, alerts, forecast, situation, managerNote, history: await history };
+  // Past Kansas City days whose weather resembled the forecast for the day being decided. Fetched
+  // after the situation because it names that day. Optional context: a failure never blocks the analysis.
+  const operatingDate = (situation?.decisionWindow as { operatingDate?: string } | undefined)?.operatingDate;
+  const similarDays = await fetchServerJson(
+    `/api/weather/similar-days${operatingDate ? `?date=${encodeURIComponent(operatingDate)}` : ''}`,
+  ).catch(() => null);
+  return { weather, alerts, forecast, situation, similarDays, managerNote, history: await history };
 }
 
 async function handleAnalyzeRequest(req: IncomingMessage, res: ServerResponse) {
