@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ensureDecisionRecord, fetchAnalysis, fetchLiveWeather, fetchSituation } from './api';
-import type { AnalysisState, Decision, DecisionRecordDetail, LiveWeather, Posture, Situation } from './api';
+import { askTeam, ensureDecisionRecord, fetchAnalysis, fetchLiveWeather, fetchSituation } from './api';
+import type { ChatMessage, AnalysisState, Decision, DecisionRecordDetail, LiveWeather, Posture, Situation } from './api';
 import { Icon } from './components';
 import { POSTURES, formatCount, formatTime, useNow } from './format';
 import { DecisionRecordPage } from './pages/DecisionRecord';
@@ -42,6 +42,9 @@ function App() {
     const [recordError, setRecordError] = useState<string>();
     // Local context the manager gave the agent; the analysis and the record are redone with it.
     const [managerNote, setManagerNote] = useState<string>();
+    // The conversation with the agent team. It lives here so switching tabs does not lose it.
+    const [chat, setChat] = useState<ChatMessage[]>([]);
+    const [chatBusy, setChatBusy] = useState(false);
     // The recommendation the current record was opened for. Refreshing evidence that leads to the
     // same recommendation keeps the record; a new recommendation opens a new one.
     const recordFor = useRef<string>(undefined);
@@ -130,6 +133,32 @@ function App() {
         setRecord(undefined);
         setRecordError(undefined);
         setManagerNote(undefined);
+        setChat([]);
+    }
+
+    // Asks the conversation agent about the evidence and recommendation on screen.
+    async function ask(question: string) {
+        const history = chat;
+        setChat([...history, { role: 'user', text: question }]);
+        setChatBusy(true);
+        try {
+            const answer = await askTeam(question, history, {
+                scenario,
+                managerNote,
+                recommendation: analysis.status === 'ready' ? analysis.data : undefined,
+            });
+            setChat(current => [...current, answer]);
+        } catch (e) {
+            const message = e instanceof Error ? e.message : 'The team could not answer.';
+            // The question stays visible, but neither it nor the error is sent as history next time.
+            setChat(current => [
+                ...current.slice(0, -1),
+                { role: 'user', text: question, failed: true },
+                { role: 'assistant', text: message, failed: true },
+            ]);
+        } finally {
+            setChatBusy(false);
+        }
     }
 
     // Asks the agent to recommend again with the manager's note, or without one when it is cleared.
@@ -224,6 +253,9 @@ function App() {
                             onRecorded={setRecord}
                             managerNote={managerNote}
                             onReconsider={reconsider}
+                            chat={chat}
+                            chatBusy={chatBusy}
+                            onAsk={ask}
                         />
                     )}
                     {tab === 'notifications' && (

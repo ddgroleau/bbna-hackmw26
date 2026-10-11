@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@strands-agents/harness": "^0.2.0",
+    "@strands-agents/sdk": "1.20.0",
     "dotenv": "^18.0.7",
     "exceljs": "4.4.0",
     "jspdf": "4.2.1",

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { recordDecision } from '../api';
-import type { AnalysisState, Audience, DecisionRecordDetail, LiveForecast, LiveWeather, Posture, Situation } from '../api';
+import type { ChatMessage, TeamBrief, AnalysisState, Audience, DecisionRecordDetail, LiveForecast, LiveWeather, Posture, Situation } from '../api';
 import { Icon, PageHead } from '../components';
 import { AUDIENCES, AUDIENCE_ORDER, POSTURES, POSTURE_ORDER, formatCount, formatCountdown, formatDateTime, formatTemp, formatTime, useNow } from '../format';
 
@@ -25,10 +25,15 @@ interface Props {
     // The note the agent's current recommendation was made with, if any.
     managerNote?: string;
     onReconsider: (note: string | undefined) => void;
+    // The conversation with the agent team.
+    chat: ChatMessage[];
+    chatBusy: boolean;
+    onAsk: (question: string) => void;
 }
 
 export function SituationPage({
     situation, analysis, liveWeather, loading, onRefresh, onNotify, record, recordError, onRecorded, managerNote, onReconsider,
+    chat, chatBusy, onAsk,
 }: Props) {
     const { facility, decisionWindow } = situation;
     const busy = loading || analysis.status === 'loading';
@@ -64,6 +69,7 @@ export function SituationPage({
                         managerNote={managerNote}
                         onReconsider={onReconsider}
                     />
+                    <TeamChat chat={chat} busy={chatBusy} ready={analysis.status === 'ready'} onAsk={onAsk} />
                     {liveWeather
                         ? <LiveWeatherData situation={situation} liveWeather={liveWeather} />
                         : <WeatherData situation={situation} />}
@@ -77,7 +83,7 @@ export function SituationPage({
     );
 }
 
-type RecommendationProps = Omit<Props, 'liveWeather' | 'loading'> & { live: boolean };
+type RecommendationProps = Omit<Props, 'liveWeather' | 'loading' | 'chat' | 'chatBusy' | 'onAsk'> & { live: boolean };
 
 function RecommendationCard({
     situation, analysis, live, onRefresh, onNotify, record, recordError, onRecorded, managerNote, onReconsider,
@@ -97,10 +103,14 @@ function RecommendationCard({
     if (analysis.status === 'loading') {
         return (
             <section className="card recommendation tone-info">
-                <p className="eyebrow muted">Agent recommendation</p>
+                <p className="eyebrow muted">Agent team recommendation</p>
                 <p className="rec-pending">
                     <Icon name="refresh" className="spin" />
-                    Analyzing {live ? 'the live weather feeds' : 'this scenario'}{managerNote ? ' with your note' : ''}…
+                    The agent team is analyzing {live ? 'the live weather feeds' : 'this scenario'}{managerNote ? ' with your note' : ''}…
+                </p>
+                <p className="small">
+                    The meteorologist and workforce analyst gather evidence, the rules analyst checks the decision matrix,
+                    and the decision lead combines their findings. This takes about 15 seconds.
                 </p>
             </section>
         );
@@ -109,8 +119,8 @@ function RecommendationCard({
     if (analysis.status === 'error') {
         return (
             <section className="card recommendation tone-danger">
-                <p className="eyebrow muted">Agent recommendation</p>
-                <p className="banner"><Icon name="alert" />The agent could not produce a recommendation.</p>
+                <p className="eyebrow muted">Agent team recommendation</p>
+                <p className="banner"><Icon name="alert" />The agent team could not produce a recommendation.</p>
                 <p className="small">{analysis.message}</p>
                 <div className="rec-actions">
                     <button className="btn btn-primary" onClick={onRefresh}>Try again</button>
@@ -129,7 +139,7 @@ function RecommendationCard({
         <section className={`card recommendation tone-${posture.tone}`}>
             <div className="rec-head">
                 <div>
-                    <p className="eyebrow muted">Agent recommendation</p>
+                    <p className="eyebrow muted">Agent team recommendation</p>
                     <p className="rec-posture">{posture.label}</p>
                 </div>
                 <div className="confidence">
@@ -139,6 +149,8 @@ function RecommendationCard({
             </div>
 
             <p className="rec-explanation">{summary}</p>
+
+            {analysis.data.team.length > 0 && <TeamBriefs team={analysis.data.team} />}
 
             {managerNote && (
                 <p className="banner tone-info">
@@ -374,6 +386,115 @@ function AgentNoteForm({ initialNote, onSubmit, onCancel }: {
                 <button type="button" className="btn-link" onClick={onCancel}>Cancel</button>
             </div>
         </form>
+    );
+}
+
+const TOOL_LABELS: Record<string, string> = {
+    get_current_observation: 'station reading',
+    get_active_alerts: 'NWS alerts',
+    get_decision_day_forecast: 'forecast',
+    get_facility_schedule: 'facility schedule',
+    get_staffing: 'staffing',
+    get_rule_checks: 'decision matrix',
+    get_manager_note: 'manager note',
+    get_decision_history: 'decision history',
+};
+
+// What each specialist found and which tools it used, so the manager can see how the
+// recommendation was reached. The same briefs are kept in the decision record.
+function TeamBriefs({ team }: { team: TeamBrief[] }) {
+    return (
+        <details className="team-briefs">
+            <summary>How the team reached this · {team.length} specialists</summary>
+            <ol>
+                {team.map(member => (
+                    <li key={member.id}>
+                        <div className="team-role">
+                            <strong>{member.role}</strong>
+                            {member.toolsUsed.length > 0 && (
+                                <span>Checked {member.toolsUsed.map(name => TOOL_LABELS[name] ?? name).join(', ')}</span>
+                            )}
+                        </div>
+                        <p>{member.brief}</p>
+                    </li>
+                ))}
+            </ol>
+        </details>
+    );
+}
+
+const SUGGESTED_QUESTIONS = [
+    'Why not a delayed start instead?',
+    'Who still has to come in?',
+    'What would change the recommendation?',
+];
+
+// The conversation agent: answers the manager's questions by consulting the specialists.
+function TeamChat({ chat, busy, ready, onAsk }: { chat: ChatMessage[]; busy: boolean; ready: boolean; onAsk: (question: string) => void }) {
+    const [draft, setDraft] = useState('');
+
+    function submit(event: FormEvent) {
+        event.preventDefault();
+        const question = draft.trim();
+        if (!question || busy) return;
+        setDraft('');
+        onAsk(question);
+    }
+
+    return (
+        <section className="card team-chat">
+            <div className="card-head">
+                <h2>Ask the team</h2>
+                <Icon name="users" size={24} />
+            </div>
+            <p className="small">
+                A conversation agent answers by consulting the meteorologist, workforce analyst and rules analyst. It advises; you decide.
+            </p>
+
+            {chat.length > 0 && (
+                <ol className="chat-log" aria-live="polite">
+                    {chat.map((message, index) => (
+                        <li key={index} className={`chat-${message.role}${message.failed ? ' chat-failed' : ''}`}>
+                            <p>{message.text}</p>
+                            {message.consulted && message.consulted.length > 0 && (
+                                <span className="chat-consulted">Consulted {message.consulted.map(member => member.role).join(', ')}</span>
+                            )}
+                        </li>
+                    ))}
+                    {busy && (
+                        <li className="chat-assistant chat-pending">
+                            <p><Icon name="refresh" size={16} className="spin" /> Consulting the team…</p>
+                        </li>
+                    )}
+                </ol>
+            )}
+
+            {chat.length === 0 && ready && (
+                <div className="chat-suggestions">
+                    {SUGGESTED_QUESTIONS.map(question => (
+                        <button key={question} type="button" className="btn btn-small" onClick={() => onAsk(question)} disabled={busy}>
+                            {question}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            <form className="chat-form" onSubmit={submit}>
+                <input
+                    type="text"
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    placeholder={ready ? 'Ask about the conditions, the rules, or who is affected' : 'Available once the team has a recommendation'}
+                    maxLength={1000}
+                    disabled={!ready}
+                    aria-label="Question for the agent team"
+                />
+                <button type="submit" className="btn btn-primary" disabled={!ready || busy || !draft.trim()}>
+                    <Icon name="send" size={18} />
+                    Ask
+                </button>
+            </form>
+        </section>
     );
 }
 

@@ -171,6 +171,26 @@ td strong + span { font-size: 12px; color: var(--blue); }
 .confidence span { font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue); }
 .rec-explanation { font-size: 17px; color: var(--ink); }
 .rec-pending { display: flex; align-items: center; gap: 12px; font-size: 17px; color: var(--tone); }
+.team-briefs { border-top: 1px solid var(--line); padding-top: 16px; }
+.team-briefs summary { cursor: pointer; font-weight: 600; color: var(--blue); }
+.team-briefs ol { display: grid; gap: 14px; margin-top: 14px; }
+.team-briefs li { display: grid; gap: 4px; padding-left: 14px; border-left: 3px solid var(--line); }
+.team-role { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.team-role span { font-size: 12px; color: var(--muted); }
+.team-briefs p { font-size: 14px; white-space: pre-line; }
+.team-chat { display: grid; gap: 14px; }
+.team-chat .card-head { margin-bottom: 0; }
+.chat-log { display: grid; gap: 10px; max-height: 420px; overflow-y: auto; }
+.chat-log li { display: grid; gap: 4px; max-width: 88%; padding: 10px 14px; border-radius: 12px; font-size: 14px; white-space: pre-line; }
+.chat-user { justify-self: end; background: var(--navy); color: #fff; }
+.chat-assistant { justify-self: start; background: #f1f4f7; color: var(--ink); }
+.chat-failed.chat-user { opacity: 0.6; }
+.chat-failed.chat-assistant { background: var(--danger-soft); color: var(--danger); }
+.chat-pending p { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.chat-consulted { font-size: 12px; color: var(--blue); }
+.chat-suggestions { display: flex; flex-wrap: wrap; gap: 8px; }
+.chat-form { display: flex; gap: 10px; }
+.chat-form input { flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--card); }
 .triggers th, .triggers td { padding-left: 0; }
 .rec-actions { display: flex; align-items: center; gap: 12px; padding-top: 20px; border-top: 1px solid var(--line); }
 .alternatives { display: grid; gap: 10px; }
