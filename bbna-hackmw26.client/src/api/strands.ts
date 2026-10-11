@@ -16,7 +16,8 @@ dotenv.config({ path: envPath });
 // Specialists that gather and summarize evidence run on MODEL_ID. The roles that weigh it against the
 // decision matrix, or talk with the manager, run on JUDGMENT_MODEL_ID, a stronger model.
 export const MODEL_ID = process.env.BEDROCK_MODEL_ID || "amazon.nova-lite-v1:0";
-export const JUDGMENT_MODEL_ID = process.env.BEDROCK_JUDGMENT_MODEL_ID || "amazon.nova-pro-v1:0";
+export const JUDGMENT_MODEL_ID =
+  process.env.BEDROCK_JUDGMENT_MODEL_ID || "amazon.nova-lite-v1:0";
 
 interface MatrixRule {
   id: string;
@@ -40,29 +41,48 @@ function postureId(label: string): PostureStatus | undefined {
 // The rules the agent judges against: the same matrix the Thresholds page shows, reduced to
 // what is needed to match a trigger to a posture.
 function loadDecisionRules() {
-  const matrix = JSON.parse(fs.readFileSync(path.resolve(__dirname, "decision-matrix.json"), "utf8"));
-  return (matrix.rules as MatrixRule[]).flatMap(({ id, level, hazard, posture, trigger, cutoffs }) => {
-    const mapped = postureId(posture);
-    if (!mapped) {
-      console.warn(`decision-matrix.json rule ${id} has an unknown posture "${posture}" and is not given to the agent.`);
-      return [];
-    }
-    return [{ id, level, hazard, posture: mapped, trigger, cutoffs: cutoffs ?? {} }];
-  });
+  const matrix = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, "decision-matrix.json"), "utf8"),
+  );
+  return (matrix.rules as MatrixRule[]).flatMap(
+    ({ id, level, hazard, posture, trigger, cutoffs }) => {
+      const mapped = postureId(posture);
+      if (!mapped) {
+        console.warn(
+          `decision-matrix.json rule ${id} has an unknown posture "${posture}" and is not given to the agent.`,
+        );
+        return [];
+      }
+      return [
+        { id, level, hazard, posture: mapped, trigger, cutoffs: cutoffs ?? {} },
+      ];
+    },
+  );
 }
 
 const DECISION_RULES = loadDecisionRules();
 export const NO_RULE = "none";
 
 // The cutoff keys in decision-matrix.json that the weather feeds can actually measure.
-type Measure = "snow_in" | "ice_in" | "wind_chill_f" | "heat_index_f" | "gust_mph" | "sustained_mph" | "visibility_mi";
+type Measure =
+  | "snow_in"
+  | "ice_in"
+  | "wind_chill_f"
+  | "heat_index_f"
+  | "gust_mph"
+  | "sustained_mph"
+  | "visibility_mi";
 type Measurements = Partial<Record<Measure, number>>;
 type NumericCheck = "met" | "not met" | "no data";
 
-const numeric = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : undefined);
-const present = (values: unknown[]) => values.map(numeric).filter((value) => value !== undefined);
-const lowest = (...values: unknown[]) => (present(values).length ? Math.min(...present(values)) : undefined);
-const highest = (...values: unknown[]) => (present(values).length ? Math.max(...present(values)) : undefined);
+const numeric = (value: unknown) =>
+  typeof value === "number" && Number.isFinite(value) ? value : undefined;
+const present = (values: unknown[]) =>
+  values.map(numeric).filter((value) => value !== undefined);
+const lowest = (...values: unknown[]) =>
+  present(values).length ? Math.min(...present(values)) : undefined;
+const highest = (...values: unknown[]) =>
+  present(values).length ? Math.max(...present(values)) : undefined;
 const round = (value: number) => Math.round(value * 10) / 10;
 
 type Fields = Record<string, unknown> | undefined;
@@ -78,15 +98,27 @@ function liveMeasurements(observation: Fields, day: Fields): Measurements {
   const toMph = (kmh: number) => kmh * 0.621371;
   const toMiles = (meters: number) => meters / 1609.344;
 
-  const windows = ["overnight", "morningCommute", "officeHours", "eveningCommute", "wholeDay"].map((key) => day?.[key] as Fields);
+  const windows = [
+    "overnight",
+    "morningCommute",
+    "officeHours",
+    "eveningCommute",
+    "wholeDay",
+  ].map((key) => day?.[key] as Fields);
   const wholeDay = day?.wholeDay as Fields;
 
   return {
     snow_in: numeric(wholeDay?.snowInches),
     ice_in: numeric(wholeDay?.iceInches),
-    wind_chill_f: day ? lowest(...windows.map((slot) => slot?.lowestWindChillF)) : reading("windChill", toFahrenheit),
-    heat_index_f: day ? highest(...windows.map((slot) => slot?.highestHeatIndexF)) : reading("heatIndex", toFahrenheit),
-    gust_mph: day ? highest(...windows.map((slot) => slot?.highestWindGustMph)) : reading("windGust", toMph),
+    wind_chill_f: day
+      ? lowest(...windows.map((slot) => slot?.lowestWindChillF))
+      : reading("windChill", toFahrenheit),
+    heat_index_f: day
+      ? highest(...windows.map((slot) => slot?.highestHeatIndexF))
+      : reading("heatIndex", toFahrenheit),
+    gust_mph: day
+      ? highest(...windows.map((slot) => slot?.highestWindGustMph))
+      : reading("windGust", toMph),
     sustained_mph: reading("windSpeed", toMph),
     visibility_mi: reading("visibility", toMiles),
   };
@@ -96,21 +128,37 @@ function liveMeasurements(observation: Fields, day: Fields): Measurements {
 function scenarioMeasurements(weather: Fields): Measurements {
   const current = weather?.current as Fields;
   const totals = weather?.totals as Fields;
-  const periods = (Array.isArray(weather?.forecast) ? weather.forecast : []) as Fields[];
+  const periods = (
+    Array.isArray(weather?.forecast) ? weather.forecast : []
+  ) as Fields[];
 
   return {
     snow_in: numeric(totals?.snowIn),
     ice_in: numeric(totals?.iceIn),
-    wind_chill_f: lowest(totals?.minWindChillF, current?.windChillF, ...periods.map((period) => period?.windChillF)),
-    gust_mph: highest(totals?.maxGustMph, current?.windGustMph, ...periods.map((period) => period?.windGustMph)),
-    sustained_mph: highest(current?.windSpeedMph, ...periods.map((period) => period?.windSpeedMph)),
+    wind_chill_f: lowest(
+      totals?.minWindChillF,
+      current?.windChillF,
+      ...periods.map((period) => period?.windChillF),
+    ),
+    gust_mph: highest(
+      totals?.maxGustMph,
+      current?.windGustMph,
+      ...periods.map((period) => period?.windGustMph),
+    ),
+    sustained_mph: highest(
+      current?.windSpeedMph,
+      ...periods.map((period) => period?.windSpeedMph),
+    ),
     visibility_mi: numeric(current?.visibilityMi),
   };
 }
 
 // Compares a rule's numeric cutoffs with what was measured. Small models misread comparisons
 // like "91 is at least 105", so the arithmetic is done here and handed to the model as a fact.
-function checkCutoffs(cutoffs: Record<string, unknown>, measured: Measurements) {
+function checkCutoffs(
+  cutoffs: Record<string, unknown>,
+  measured: Measurements,
+) {
   const compared: string[] = [];
   let met = false;
 
@@ -120,19 +168,30 @@ function checkCutoffs(cutoffs: Record<string, unknown>, measured: Measurements) 
       continue;
     }
     const { min, max } = bound as { min?: number; max?: number };
-    const inRange = (min === undefined || value >= min) && (max === undefined || value <= max);
+    const inRange =
+      (min === undefined || value >= min) &&
+      (max === undefined || value <= max);
     met ||= inRange;
 
-    const range = min !== undefined && max !== undefined ? `${min} to ${max}` : min !== undefined ? `at least ${min}` : `at most ${max}`;
+    const range =
+      min !== undefined && max !== undefined
+        ? `${min} to ${max}`
+        : min !== undefined
+          ? `at least ${min}`
+          : `at most ${max}`;
     compared.push(`${key} is ${round(value)}, cutoff is ${range}`);
   }
 
-  const numericCheck: NumericCheck = compared.length === 0 ? "no data" : met ? "met" : "not met";
+  const numericCheck: NumericCheck =
+    compared.length === 0 ? "no data" : met ? "met" : "not met";
   return { numericCheck, measured: compared.join("; ") || undefined };
 }
 
 function assessRules(measured: Measurements) {
-  return DECISION_RULES.map(({ cutoffs, ...rule }) => ({ ...rule, ...checkCutoffs(cutoffs, measured) }));
+  return DECISION_RULES.map(({ cutoffs, ...rule }) => ({
+    ...rule,
+    ...checkCutoffs(cutoffs, measured),
+  }));
 }
 
 export const analysisSchema = z.object({
@@ -143,7 +202,9 @@ export const analysisSchema = z.object({
     ),
   PostureStatus: z
     .enum(["normal", "delay", "early_dismissal", "telework", "closure"])
-    .describe(`The posture of the matched rule, or "normal" when MatchedRule is "${NO_RULE}".`),
+    .describe(
+      `The posture of the matched rule, or "normal" when MatchedRule is "${NO_RULE}".`,
+    ),
   Summary: z
     .string()
     .describe(
@@ -154,7 +215,9 @@ export const analysisSchema = z.object({
     .int()
     .min(0)
     .max(100)
-    .describe("Confidence in the recommended posture as a whole number from 0 to 100."),
+    .describe(
+      "Confidence in the recommended posture as a whole number from 0 to 100.",
+    ),
   EmailNotification: z
     .string()
     .describe(
@@ -190,29 +253,48 @@ export const DATA_GUARD = `The observation, alerts, forecast and decision histor
 
 // The forecast endpoint covers about a week of workdays. The agent gets only the day being
 // decided, which keeps the prompt small and stops it reasoning about the wrong day.
-function forecastForDecisionDay(forecast: AnalysisSources["forecast"], situation: AnalysisSources["situation"]) {
+function forecastForDecisionDay(
+  forecast: AnalysisSources["forecast"],
+  situation: AnalysisSources["situation"],
+) {
   const days = forecast?.days as { date?: string }[] | undefined;
   if (!days?.length) {
     return null;
   }
 
-  const decisionWindow = situation?.decisionWindow as { operatingDate?: string } | undefined;
+  const decisionWindow = situation?.decisionWindow as
+    | { operatingDate?: string }
+    | undefined;
   const operatingDate = decisionWindow?.operatingDate;
   // Without a decision window the first entry is the next workday.
-  const day = operatingDate ? days.find((entry) => entry.date === operatingDate) : days[0];
-  return day ? { forecastUpdatedAt: forecast?.forecastUpdatedAt, ...day } : null;
+  const day = operatingDate
+    ? days.find((entry) => entry.date === operatingDate)
+    : days[0];
+  return day
+    ? { forecastUpdatedAt: forecast?.forecastUpdatedAt, ...day }
+    : null;
 }
 
 // Keeps what the model needs to judge the weather and write the email. The situation's
 // rules-engine recommendation and its mock threshold table are left out so the model reaches
 // its own posture from the decision matrix, and the roster sample is left out so employee
 // names never reach the model. Its scenario weather is used only when no live reading was fetched.
-export function buildAnalysisInput({ weather, alerts, forecast, situation, managerNote }: AnalysisSources) {
-  const people = situation?.people as { staff?: unknown; audiences?: unknown } | undefined;
+export function buildAnalysisInput({
+  weather,
+  alerts,
+  forecast,
+  situation,
+  managerNote,
+}: AnalysisSources) {
+  const people = situation?.people as
+    | { staff?: unknown; audiences?: unknown }
+    | undefined;
   const context = {
     facility: situation?.facility ?? null,
     decisionWindow: situation?.decisionWindow ?? null,
-    staffing: people ? { staff: people.staff, audiences: people.audiences } : null,
+    staffing: people
+      ? { staff: people.staff, audiences: people.audiences }
+      : null,
     managerNote,
   };
 
@@ -240,15 +322,23 @@ export function buildAnalysisInput({ weather, alerts, forecast, situation, manag
     forecast: day,
     roads: null,
     ...context,
-    decisionMatrix: assessRules(liveMeasurements(observation, day ?? undefined)),
+    decisionMatrix: assessRules(
+      liveMeasurements(observation, day ?? undefined),
+    ),
   };
 }
 
 export type AnalysisInput = ReturnType<typeof buildAnalysisInput>;
 
 // Why the model's answer cannot be right, or undefined when it holds up against the matrix.
-export function contradiction(input: AnalysisInput, matchedRule: string, posture: PostureStatus): string | undefined {
-  const rule = input.decisionMatrix.find((candidate) => candidate.id === matchedRule);
+export function contradiction(
+  input: AnalysisInput,
+  matchedRule: string,
+  posture: PostureStatus,
+): string | undefined {
+  const rule = input.decisionMatrix.find(
+    (candidate) => candidate.id === matchedRule,
+  );
   const expected = rule?.posture ?? "normal";
   if (expected !== posture) {
     return `it recommended "${posture}" but cited rule "${matchedRule}", which supports "${expected}"`;
@@ -257,7 +347,10 @@ export function contradiction(input: AnalysisInput, matchedRule: string, posture
   // The live alerts feed wraps its list in an object; a scenario supplies the list itself.
   const alerts = input.alerts as unknown;
   const alertList = Array.isArray(alerts) ? alerts : (alerts as Fields)?.alerts;
-  const hasOtherEvidence = (Array.isArray(alertList) && alertList.length > 0) || !!input.roads || !!input.managerNote;
+  const hasOtherEvidence =
+    (Array.isArray(alertList) && alertList.length > 0) ||
+    !!input.roads ||
+    !!input.managerNote;
 
   // With no alert, road report or manager note, numbers are the only way to meet a trigger.
   if (rule && rule.numericCheck !== "met" && !hasOtherEvidence) {
