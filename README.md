@@ -65,86 +65,14 @@ Best in Show, Best AI, Best Use of Data, Best Design, Most Impactful, and Most I
 
 ## Similar past days (retrieval-augmented generation)
 
-A threshold table answers "is a rule met?". A manager also wants to know "what happened the last time it looked like this?". Closure Call answers that by retrieving past Kansas City days whose weather pattern matches the forecast and giving them to the agent team as evidence. For example, a forecast of rain overnight followed by temperatures dropping below freezing before the commute retrieves February 16, 2023. That day had no warning-level snowfall, yet the morning commute saw 14 injury crashes against a typical 1.6.
+A threshold table answers "is a rule met?". A manager also wants to know what happened the last time conditions looked like this. Closure Call retrieves past Kansas City days whose weather matched the forecast and gives them to the agent team as evidence. For example, rain overnight followed by a freeze before the commute retrieves February 16, 2023, when the morning commute saw 14 injury crashes against a typical 1.6.
 
-### What is in the history
+- **History.** 332 notable Kansas City days from 2019 to 2024, built from NOAA storm reports, archived NWS warnings, airport observations, and city injury-crash records, and stored in SQLite with Amazon Titan embeddings.
+- **Matching.** The same facts (refreeze, ice, snow, commute thunderstorms, and tornado, severe storm, flood, and winter alerts) are computed for each past day and for the forecast day, and past days of the same hazard type are ranked on them. Embedding similarity is a small tie-breaker. A calm forecast returns no matches.
+- **Use.** The meteorologist cites the closest match through a `get_similar_past_days` tool, and the decision lead may repeat it in the summary. Past days are evidence only: they never meet a rule, change the posture, or appear in the employee email.
+- **Limits.** Matches are only fetched for the live feeds, not the mock scenarios. The history comes from one station, includes few rare events, and its crash data stops at 2024.
 
-332 notable days from 2019 to 2024: every day with a NOAA storm report or an NWS warning or advisory for Jackson County, or a weather-related spike in crashes. Each day is built from public data:
-
-| Source | What it contributes |
-| --- | --- |
-| NOAA NCEI Storm Events Database | Event types, magnitudes, tornado ratings, injuries, and the written narrative |
-| NWS warnings, archived by the Iowa Environmental Mesonet | Every watch, warning, and advisory for the county (storms) and forecast zone (winter), with times |
-| Hourly observations at KC Downtown Airport (Iowa Environmental Mesonet) | Weather and temperature in each window of the day |
-| NOAA GHCN-Daily at KCI Airport (AWS Open Data) | Measured snowfall, snow depth, precipitation, and peak gust |
-| Kansas City Road Casualties open data (Missouri Highway Patrol) | Injury and fatal crashes per window, compared with a typical day for the same weekday and hour |
-
-Each day becomes a short summary in the same windows the forecast uses: overnight, morning commute, office hours, and evening commute.
-
-```
-Kansas City weather event in February (workday).
-Hazard: winter (refreeze, snow).
-- Overnight (6 PM prior day - 6 AM): unknown precipitation, 28-37°F; injury crashes 7 vs ~4.0 typical (1.7x)
-- Morning commute (6-9 AM): dry, 25-27°F; injury crashes 14 vs ~1.6 typical (8.7x)
-...
-NWS warnings/advisories for Jackson County: Winter Weather Advisory Wed 09:00 PM - Thu 06:00 PM.
-```
-
-### How a match is found
-
-1. The same facts are computed for every past day and for the forecast day: refreeze (precipitation overnight, then 32°F or below at the morning commute), freezing rain or sleet, snow amount, extreme cold, thunderstorms during a commute, and Tornado, Severe Thunderstorm, Flash Flood, winter, and cold alerts. For a forecast day these come from `/api/weather/forecast`, the active alerts, and the SPC outlook.
-2. Past days of the same hazard type, winter or severe storm, are scored on how many of those facts agree. Weak matches are dropped, and a calm forecast returns no matches.
-3. As a tie-breaker, the forecast is embedded with Amazon Titan Text Embeddings V2 on Bedrock and compared with each past day's stored embedding. This is 15% of the score: the rules find the right kind of day, and the embeddings help order them.
-4. The top three are returned, each with the plain-language reasons it matched.
-
-The past days are stored with their embeddings in a read-only SQLite file, `bbna-hackmw26.Server/WeatherHistory/kc-weather-history.db` (about 2 MB). Without a Bedrock key, matching runs on the rules alone.
-
-### How the agent team uses it
-
-The meteorologist gets a `get_similar_past_days` tool and cites the closest match in its brief. The decision lead may repeat it in the summary as background. Past days never meet a rule, never change the posture, and never appear in the employee email. The tool only exists when the forecast matched past days, so the agents have nothing to invent when there are none.
-
-### Why crash history
-
-Before building this we checked whether weather really shows up in Kansas City's crash records, hour by hour, for 2019–2024:
-
-| Weather in that hour | Injury crashes vs a normal hour |
-| --- | --- |
-| Severe Thunderstorm Warning in effect | 1.8x |
-| Heavy rain (0.25 in/hour or more) | 1.7x |
-| Thunderstorm at the airport | 1.6x |
-| Freezing rain or sleet falling | 1.3x |
-| Snow falling | 1.25x |
-| Below freezing after recent precipitation | 1.2x |
-
-All six were statistically significant. Snow totals alone predicted little, because people stay home, while refreeze mornings and commute-hour thunderstorms produced the biggest spikes. That is why the matching focuses on timing and ice rather than inches of snow.
-
-### Limits
-
-- Past days inform the explanation, not the decision. Only the decision matrix can change the posture.
-- Matches are only fetched for the live feeds, not the mock scenarios. The app decides for the next workday, so when that day is calm there are no past days to show.
-- The history is Kansas City only, from one airport station, and has few rare events (8 tornado days).
-- Crash data covers injury and fatal crashes inside city limits, through 2024. Fender-benders are not included, so the effect on icy days is understated.
-- The matching facts are separate from the decision matrix. Linking each past day to the matrix rules it would have met is a planned next step.
-
-### API and rebuilding
-
-```
-GET /api/weather/similar-days?date=2026-10-14&limit=3
-```
-
-It returns the facts computed for the forecast day, whether embeddings were used, and the matches, each with its date, score, reasons, summary, warnings, and commute crash ratios.
-
-To rebuild the history, from the repository root (downloads are cached in `tools/weather-history/.cache`, which git ignores):
-
-```bash
-python -I tools/weather-history/build_cards.py
-```
-
-```bash
-python -I tools/weather-history/embed_cards.py
-```
-
-The second step needs `AWS_BEARER_TOKEN_BEDROCK`, read from the environment or from `bbna-hackmw26.client/src/api/.env`.
+Details, data sources, the crash analysis behind the matching, and rebuild steps are in [tools/weather-history/README.md](tools/weather-history/README.md). The endpoint is `GET /api/weather/similar-days?date=yyyy-MM-dd`.
 
 ## Technologies
 
