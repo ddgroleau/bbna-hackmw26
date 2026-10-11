@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using bbna_hackmw26.Server.Audit;
+using bbna_hackmw26.Server.Roster;
 using bbna_hackmw26.Server.Weather;
 using Microsoft.Extensions.Options;
 
@@ -44,6 +45,8 @@ builder.Services.Configure<AuditOptions>(builder.Configuration.GetSection(AuditO
 var auditOptions = builder.Configuration.GetSection(AuditOptions.SectionName).Get<AuditOptions>() ?? new AuditOptions();
 var auditDatabasePath = Path.GetFullPath(auditOptions.DatabasePath, builder.Environment.ContentRootPath);
 builder.Services.AddSingleton(new DecisionLogStore(AuditDatabase.ConnectionString(auditDatabasePath)));
+// The employee roster lives in the same database; /api/situation works out who gets notified from it.
+builder.Services.AddSingleton(new RosterStore(AuditDatabase.ConnectionString(auditDatabasePath)));
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -54,6 +57,11 @@ var app = builder.Build();
 // Create the audit database once at startup. If the schema in AuditDatabase.Schema has changed since
 // the database was made, the old database is backed up, dropped and recreated with the new schema.
 AuditDatabase.EnsureCreated(auditDatabasePath, app.Logger);
+
+// Reload the roster from the seed file every startup, so edits to it take effect without a schema change.
+var rosterSeedPath = Path.Combine(app.Environment.ContentRootPath, "MockData", "employees.json");
+var rosterCount = app.Services.GetRequiredService<RosterStore>().Seed(rosterSeedPath);
+app.Logger.LogInformation("Loaded {Count} employees into the roster from {Path}.", rosterCount, rosterSeedPath);
 
 app.UseDefaultFiles();
 app.MapStaticAssets();
