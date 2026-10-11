@@ -81,6 +81,15 @@ namespace bbna_hackmw26.Server.Weather
         /// <summary>Total expected ice accumulation (freezing rain), in inches.</summary>
         public double? IceInches { get; init; }
 
+        /// <summary>Total expected precipitation of any kind (rain, or snow/ice melted down), in inches of water.</summary>
+        public double? PrecipInches { get; init; }
+
+        /// <summary>Lowest expected air temperature, in °F. At or below 32°F with precipitation around means icy roads are likely.</summary>
+        public double? LowestTemperatureF { get; init; }
+
+        /// <summary>Highest expected air temperature, in °F.</summary>
+        public double? HighestTemperatureF { get; init; }
+
         /// <summary>Coldest expected wind chill, in °F. Null when no wind chill is forecast.</summary>
         public double? LowestWindChillF { get; init; }
 
@@ -137,6 +146,8 @@ namespace bbna_hackmw26.Server.Weather
             var precipChance = ReadBlocks(p, "probabilityOfPrecipitation", "wmoUnit:percent");
             // NWS sends thunder chance without a unit label; it's always a 0-100 percentage.
             var thunderChance = ReadBlocks(p, "probabilityOfThunder", "wmoUnit:percent", allowMissingUnit: true);
+            var temperature = ReadBlocks(p, "temperature", "wmoUnit:degC");
+            var precipAmount = ReadBlocks(p, "quantitativePrecipitation", "wmoUnit:mm");
 
             // The overall time range the forecast covers, e.g. "2026-10-10T12:00:00+00:00/P7DT13H" (7 days 13 hours).
             var coverage = ParseValidTime(p.GetProperty("validTimes").GetString()!);
@@ -157,6 +168,9 @@ namespace bbna_hackmw26.Server.Weather
                 IsFullyForecast = coverage is { } c && c.Start <= start && c.End >= end,
                 SnowInches = Round(MmToInches(Total(snow, start, end)), 2),
                 IceInches = Round(MmToInches(Total(ice, start, end)), 2),
+                PrecipInches = Round(MmToInches(Total(precipAmount, start, end)), 2),
+                LowestTemperatureF = Round(CToF(Lowest(temperature, start, end))),
+                HighestTemperatureF = Round(CToF(Highest(temperature, start, end))),
                 LowestWindChillF = Round(CToF(Lowest(windChill, start, end))),
                 HighestHeatIndexF = Round(CToF(Highest(heatIndex, start, end))),
                 HighestWindGustMph = Round(KmhToMph(Highest(gusts, start, end))),

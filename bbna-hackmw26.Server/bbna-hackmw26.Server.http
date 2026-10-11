@@ -39,3 +39,9 @@ GET {{bbna_hackmw26.Server_HostAddress}}/api/weather/storm-outlook
 Accept: application/json
 
 ###
+
+# Past Kansas City days most like the forecast for the next workday (add ?date=yyyy-MM-dd for another day)
+GET {{bbna_hackmw26.Server_HostAddress}}/api/weather/similar-days
+Accept: application/json
+
+###

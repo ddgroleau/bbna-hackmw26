@@ -162,6 +162,104 @@ namespace bbna_hackmw26.Server.Controllers
         }
 
         /// <summary>
+        /// GET /api/weather/similar-days?date=2026-10-12&amp;limit=3
+        /// Finds past Kansas City days (2019-2024) whose weather pattern most resembles the forecast for a
+        /// workday: e.g. a refreeze before the morning commute, a winter storm, or a tornado watch in the
+        /// evening. Each match says why it was picked and what happened (warnings, NOAA storm reports,
+        /// injury crashes vs a typical day). Used by the AI agent as context for its recommendation.
+        /// Returns no matches when the day's weather is unremarkable.
+        /// </summary>
+        /// <param name="date">Workday to match (yyyy-MM-dd), within the forecast. Defaults to the next workday.</param>
+        /// <param name="limit">Most matches to return (1-10, default 3).</param>
+        /// <response code="200">The best-matching past days (possibly none).</response>
+        /// <response code="400">The date isn't one of the forecast workdays.</response>
+        /// <response code="502">The National Weather Service forecast could not be reached.</response>
+        [HttpGet("similar-days", Name = "GetSimilarDays")]
+        [ProducesResponseType<SimilarDaysResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway)]
+        public async Task<IActionResult> GetSimilarDays(
+            [FromQuery] DateOnly? date,
+            [FromServices] IOptions<WorkdayOptions> workday,
+            [FromServices] IOptions<WeatherHistoryOptions> historyOptions,
+            [FromServices] SpcOutlookService spc,
+            [FromServices] WeatherHistoryStore history,
+            [FromServices] BedrockEmbeddingClient bedrock,
+            [FromQuery] int limit = 3,
+            CancellationToken ct = default)
+        {
+            // 1. The forecast for the day being decided (required).
+            WorkdayForecastResponse forecast;
+            try
+            {
+                forecast = WorkdayForecastBuilder.Build(await weather.GetForecastGridAsync(ct), building.Value, workday.Value, DateTimeOffset.UtcNow);
+            }
+            catch (HttpRequestException ex)
+            {
+                return NwsUnavailable(ex);
+            }
+            var day = date is { } d ? forecast.Days.FirstOrDefault(x => x.Date == d) : forecast.Days.FirstOrDefault();
+            if (day is null)
+                return Problem(
+                    title: "Date not in the forecast",
+                    detail: $"Pick one of the forecast workdays: {string.Join(", ", forecast.Days.Select(x => x.Date.ToString("yyyy-MM-dd")))}.",
+                    statusCode: StatusCodes.Status400BadRequest);
+
+            // 2. Alerts and the SPC storm outlook sharpen the match but are optional: if either feed is down,
+            //    match on the forecast alone and say so in the note.
+            var notes = new List<string>();
+            IReadOnlyList<WeatherAlert> alerts = [];
+            try { alerts = WeatherAlert.ListFromRaw(await weather.GetActiveAlertsAsync(ct), building.Value).Alerts; }
+            catch (HttpRequestException) { notes.Add("NWS alerts were unavailable, so active alerts weren't matched."); }
+
+            StormOutlookDay? outlook = null;
+            try
+            {
+                // The SPC day whose period starts on this date (building time). SPC only covers 3 days ahead.
+                var tz = TimeZoneInfo.FindSystemTimeZoneById(workday.Value.TimeZone);
+                outlook = StormOutlookBuilder.Build(await spc.GetOutlooksAsync(ct), building.Value).Days
+                    .FirstOrDefault(o => o.ValidFrom is { } from && DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(from, tz).DateTime) == day.Date);
+            }
+            catch (HttpRequestException) { notes.Add("The SPC storm outlook was unavailable."); }
+
+            // 3. The day's pattern, and the past days that match it.
+            var pattern = DayFeatures.FromForecast(day, alerts, outlook);
+            IReadOnlyList<SimilarPastDay> matches = [];
+            var usedEmbeddings = false;
+
+            if (history.Cards.Count == 0)
+                notes.Add("The weather history database is missing; build it with tools/weather-history/build_cards.py.");
+            else if (!pattern.IsWinter && !pattern.IsStorm)
+                notes.Add("No winter or severe-storm weather is forecast for this day, so no past days are compared.");
+            else
+            {
+                // Optional tie-breaker: embed the forecast (same format as the cards) and compare by meaning.
+                var stored = history.Cards.FirstOrDefault(c => c.Embedding is not null);
+                float[]? vector = null;
+                if (stored is not null && bedrock.IsConfigured)
+                {
+                    vector = await bedrock.EmbedAsync(SimilarDaysMatcher.QueryText(day, pattern, alerts), stored.Embedding!.Length, ct);
+                    usedEmbeddings = vector is not null;
+                }
+
+                matches = SimilarDaysMatcher.Rank(pattern, isWorkday: true, history.Cards, vector,
+                    historyOptions.Value.MinimumScore, Math.Clamp(limit, 1, 10));
+                if (matches.Count == 0) notes.Add("No past day matched this forecast closely enough.");
+            }
+
+            return Ok(new SimilarDaysResponse
+            {
+                BuildingName = building.Value.Name,
+                Date = day.Date,
+                ForecastPattern = pattern,
+                UsedEmbeddings = usedEmbeddings,
+                Note = notes.Count > 0 ? string.Join(" ", notes) : null,
+                Source = SimilarDaysMatcher.Source,
+                Matches = matches,
+            });
+        }
+
+        /// <summary>
         /// The error response used when NWS is down or returns an error: 502 Bad Gateway
         /// (an upstream service failed, not our server) with a standard error body.
         /// </summary>
