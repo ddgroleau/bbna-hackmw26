@@ -146,12 +146,21 @@ export interface Decision extends NotifyRequest {
     sentAt: string;
 }
 
-// The agent's recommendation from /api/analyze.
+// What one specialist on the agent team found, and the tools it used to find it.
+export interface TeamBrief {
+    id: 'meteorologist' | 'workforce' | 'rules' | 'lead';
+    role: string;
+    brief: string;
+    toolsUsed: string[];
+}
+
+// The agent team's recommendation from /api/analyze.
 export interface Analysis {
     posture: Posture;
     summary: string;
     confidence: number;
     email: string;
+    team: TeamBrief[];
 }
 
 export type AnalysisState =
@@ -247,7 +256,46 @@ async function requestAnalysis(query: string): Promise<Analysis> {
         summary: body.data.Summary,
         confidence: body.data.ConfidencePercentage,
         email: body.data.EmailNotification,
+        team: body.data.Team ?? [],
     };
+}
+
+// One exchange with the conversation agent. `consulted` lists the specialists it asked.
+export interface ChatMessage {
+    role: 'user' | 'assistant';
+    text: string;
+    consulted?: { id: TeamBrief['id']; role: string }[];
+    failed?: boolean;
+}
+
+export interface ChatContext {
+    scenario?: string;
+    managerNote?: string;
+    recommendation?: Analysis;
+}
+
+// Asks the conversation agent, which consults the specialists to answer. The server is stateless,
+// so the earlier turns travel with each question; failed turns are left out.
+export async function askTeam(question: string, history: ChatMessage[], context: ChatContext): Promise<ChatMessage> {
+    const { recommendation } = context;
+    const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            question,
+            scenario: context.scenario ?? null,
+            managerNote: context.managerNote ?? null,
+            recommendation: recommendation
+                ? { posture: recommendation.posture, summary: recommendation.summary, confidence: recommendation.confidence }
+                : null,
+            history: history.filter(turn => !turn.failed).map(({ role, text }) => ({ role, text })),
+        }),
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok || !body?.success) {
+        throw new Error(body?.error ?? `The agent endpoint answered ${response.status}.`);
+    }
+    return { role: 'assistant', text: body.data.reply, consulted: body.data.consulted };
 }
 
 export async function fetchLiveWeather(): Promise<LiveWeather> {
