@@ -143,6 +143,8 @@ function App() {
     }
 
     function selectTab(id: Tab) {
+        // A new section starts at its top, not wherever the previous one was scrolled to.
+        if (id !== tab) window.scrollTo(0, 0);
         setTab(id);
         window.history.replaceState(null, '', '#' + id);
     }

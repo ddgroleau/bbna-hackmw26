@@ -26,6 +26,23 @@ export async function exportDecisions(records: DecisionRecordDetail[], format: E
     }
 }
 
+// Opens one record's PDF report in a new tab, or downloads it if pop-ups are blocked.
+// The tab is opened before the report is built because browsers only allow pop-ups straight from a click.
+export async function openDecisionPdf(detail: DecisionRecordDetail) {
+    const tab = window.open('', '_blank');
+    try {
+        const blob = await report([detail], new Date());
+        if (!tab) return save(blob, `${detail.record.id}.pdf`);
+        const url = URL.createObjectURL(blob);
+        tab.location.href = url;
+        // The tab needs the URL until it has loaded the PDF.
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+        tab?.close();
+        throw e;
+    }
+}
+
 const ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 function when(value: string | null): string {
