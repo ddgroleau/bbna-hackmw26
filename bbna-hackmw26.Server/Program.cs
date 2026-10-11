@@ -29,6 +29,19 @@ builder.Services.AddHttpClient<NwsWeatherService>((sp, client) =>
     client.DefaultRequestHeaders.Accept.ParseAdd("application/geo+json"); // NWS's standard JSON format
 });
 
+// Similar past days (/api/weather/similar-days): the read-only database of past Kansas City weather
+// days, and the optional Bedrock client that embeds the forecast to tie-break matches by meaning.
+// The Bedrock key is never stored in appsettings.json: it comes from the AWS_BEARER_TOKEN_BEDROCK
+// environment variable or the AI agent's git-ignored .env file. Without a key, matching uses rules only.
+builder.Services.Configure<WeatherHistoryOptions>(builder.Configuration.GetSection(WeatherHistoryOptions.SectionName));
+builder.Services.AddSingleton<WeatherHistoryStore>();
+builder.Services.Configure<BedrockOptions>(builder.Configuration.GetSection(BedrockOptions.SectionName));
+builder.Services.PostConfigure<BedrockOptions>(o =>
+{
+    if (string.IsNullOrWhiteSpace(o.ApiKey)) o.ApiKey = BedrockEmbeddingClient.FindApiKey(builder.Environment.ContentRootPath);
+});
+builder.Services.AddHttpClient<BedrockEmbeddingClient>(client => client.Timeout = TimeSpan.FromSeconds(10));
+
 // Storm Prediction Center (SPC) severe storm outlooks: read its settings and register the
 // outlook service with its own HttpClient pointed at the SPC outlook folder.
 builder.Services.Configure<SpcOptions>(builder.Configuration.GetSection(SpcOptions.SectionName));

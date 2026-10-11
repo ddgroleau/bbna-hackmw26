@@ -105,4 +105,43 @@ namespace bbna_hackmw26.Server.Weather
         // When the evening commute ends (= when the next overnight window starts).
         public TimeOnly EveningCommuteEnd { get; set; } = new(18, 0);
     }
+
+    /// <summary>
+    /// Settings for GET /api/weather/similar-days: the database of past Kansas City weather days
+    /// built by tools/weather-history/build_cards.py. Loaded from the "WeatherHistory" section of appsettings.json.
+    /// </summary>
+    public class WeatherHistoryOptions
+    {
+        // Name of the section in appsettings.json these values are read from.
+        public const string SectionName = "WeatherHistory";
+
+        // The SQLite file of past days, relative to the project folder. It's read-only at runtime.
+        public string DatabasePath { get; set; } = "WeatherHistory/kc-weather-history.db";
+
+        // Past days scoring below this (0-1) aren't returned: a weak match is worse than none.
+        public double MinimumScore { get; set; } = 0.5;
+    }
+
+    /// <summary>
+    /// Settings for calling Amazon Bedrock from the backend. Used only to embed the forecast
+    /// (Titan Text Embeddings) so similar past days can be tie-broken by meaning. Optional:
+    /// without an API key, similar days are ranked on the matching rules alone.
+    /// Loaded from the "Bedrock" section of appsettings.json.
+    /// </summary>
+    public class BedrockOptions
+    {
+        // Name of the section in appsettings.json these values are read from.
+        public const string SectionName = "Bedrock";
+
+        // AWS region the Bedrock key works in.
+        public string Region { get; set; } = "us-east-1";
+
+        // Must match the model tools/weather-history/embed_cards.py used for the stored vectors.
+        public string EmbeddingModel { get; set; } = "amazon.titan-embed-text-v2:0";
+
+        // Bedrock API key. Never put it in appsettings.json: Program.cs fills it from the
+        // AWS_BEARER_TOKEN_BEDROCK environment variable or the agent's git-ignored
+        // bbna-hackmw26.client/src/api/.env, the same key the AI agent uses.
+        public string ApiKey { get; set; } = "";
+    }
 }

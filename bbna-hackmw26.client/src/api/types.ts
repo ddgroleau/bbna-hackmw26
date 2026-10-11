@@ -56,6 +56,9 @@ export interface AnalysisSources {
   // The live workday forecast from /api/weather/forecast, about a week of workdays.
   forecast: Record<string, unknown> | null;
   situation: Record<string, unknown> | null;
+  // Past Kansas City days most like the decision day's forecast, from /api/weather/similar-days.
+  // Null for a mock scenario or when the endpoint was unavailable.
+  similarDays: Record<string, unknown> | null;
   // Free text from the `data` query parameter, e.g. something the feeds cannot see.
   managerNote: string | null;
   // Recent records from the decision log (/api/decisions), for the rules analyst. Null when unavailable.

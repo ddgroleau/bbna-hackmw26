@@ -1,0 +1,50 @@
+{
+  "id": "tornado-warning",
+  "label": "Tornado warning (closure, shelter in place)",
+  "recommendation": {
+    "posture": "closure",
+    "level": "critical",
+    "confidence": 85,
+    "thresholdSummary": "Critical threshold crossed: Tornado Warning covering the facility, with a Tornado Watch through the morning commute",
+    "explanation": "A Tornado Warning covering downtown Kansas City, including the office, is in effect until 5:30 AM, and a Tornado Watch runs until 11 AM as a second line of storms is forecast to cross the metro between 6 and 9 AM. Anyone already on site should shelter in place now. With tornado-producing storms possible through the morning commute and early reports of downed trees and power lines downtown, the office should close; telework-ready employees can work remotely once the storms pass.",
+    "whatCouldChange": "The watch being cancelled early and an inspection clearing the building and access routes by 9 AM would support a late opening. Confirmed damage to the building would keep it closed.",
+    "triggers": [
+      { "rule": "Tornado Warning", "observed": "Covers the facility until 5:30 AM", "threshold": "Warning polygon intersects the facility", "crossed": true },
+      { "rule": "Tornado Watch", "observed": "Until 11 AM", "threshold": "Watch through the morning commute", "crossed": true },
+      { "rule": "Wind gusts", "observed": "62 mph", "threshold": "≥ 58 mph", "crossed": true },
+      { "rule": "Facility or route damage", "observed": "Not yet confirmed: building not inspected", "threshold": "Confirmed damage or blocked critical route", "crossed": false }
+    ],
+    "alternatives": [
+      { "posture": "delay", "note": "Not supported: a second line of storms is forecast during the 6–9 AM commute." },
+      { "posture": "telework", "note": "Keeps everyone off the roads, but the warning covers the building itself, so the 10 essential employees should not report until it is inspected." },
+      { "posture": "normal", "note": "Not supported: a Tornado Warning covers the facility." }
+    ]
+  },
+  "weather": {
+    "alerts": [
+      {
+        "event": "Tornado Warning", "severity": "Extreme", "certainty": "Observed", "urgency": "Immediate",
+        "timing": "Until 5:30 AM", "area": "Jackson County, MO",
+        "headline": "At 4:41 AM a severe thunderstorm capable of producing a tornado was near Kansas City, Kansas, moving east at 45 mph. Radar indicated rotation. Take cover now in a basement or an interior room on the lowest floor."
+      },
+      {
+        "event": "Tornado Watch", "severity": "Extreme", "certainty": "Possible", "urgency": "Expected",
+        "timing": "Until 11 AM", "area": "Jackson County, MO",
+        "headline": "Conditions are favorable for tornadoes, damaging wind gusts to 70 mph, and hail up to 2 inches through late morning."
+      }
+    ],
+    "current": {
+      "conditions": "Thunderstorm, heavy rain", "temperatureF": 66, "windChillF": null, "windDirection": "SW",
+      "windSpeedMph": 28, "windGustMph": 62, "humidityPct": 95, "visibilityMi": 1
+    },
+    "forecast": [
+      { "period": "Overnight", "window": "12–5 AM", "shortForecast": "Severe thunderstorms, tornado possible", "temperatureF": 66, "windChillF": null, "windDirection": "SW", "windSpeedMph": 28, "windGustMph": 62, "precipChancePct": 100, "snowIn": 0, "iceIn": 0 },
+      { "period": "Morning commute", "window": "5–8 AM", "shortForecast": "Second round of strong storms", "temperatureF": 64, "windChillF": null, "windDirection": "W", "windSpeedMph": 22, "windGustMph": 50, "precipChancePct": 80, "snowIn": 0, "iceIn": 0 },
+      { "period": "Workday", "window": "8 AM–4 PM", "shortForecast": "Storms ending by 11 AM, then breezy", "temperatureF": 70, "windChillF": null, "windDirection": "W", "windSpeedMph": 20, "windGustMph": 35, "precipChancePct": 40, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening commute", "window": "4–6 PM", "shortForecast": "Partly cloudy, windy", "temperatureF": 72, "windChillF": null, "windDirection": "W", "windSpeedMph": 18, "windGustMph": 28, "precipChancePct": 10, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening", "window": "6–10 PM", "shortForecast": "Clear", "temperatureF": 62, "windChillF": null, "windDirection": "NW", "windSpeedMph": 10, "windGustMph": 18, "precipChancePct": 0, "snowIn": 0, "iceIn": 0 }
+    ],
+    "totals": { "snowIn": 0, "iceIn": 0, "minWindChillF": null, "maxGustMph": 62 },
+    "roads": { "status": "Hazardous", "detail": "Downed trees and power lines reported downtown and standing water at underpasses. Crews are responding; routes will be reassessed after 9 AM." }
+  }
+}

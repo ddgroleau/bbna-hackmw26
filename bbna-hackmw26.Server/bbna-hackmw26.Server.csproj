@@ -25,4 +25,9 @@
     </ProjectReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Past Kansas City weather days for /api/weather/similar-days (built by tools/weather-history). -->
+    <None Update="WeatherHistory\kc-weather-history.db" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
