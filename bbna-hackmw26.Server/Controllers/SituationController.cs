@@ -1,6 +1,8 @@
 using System.Globalization;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Mvc;
+using bbna_hackmw26.Server.Roster;
 
 namespace bbna_hackmw26.Server.Controllers
 {
@@ -9,7 +11,7 @@ namespace bbna_hackmw26.Server.Controllers
     // the response shape is what the client depends on.
     [ApiController]
     [Route("api/situation")]
-    public class SituationController(IWebHostEnvironment env) : ControllerBase
+    public class SituationController(IWebHostEnvironment env, RosterStore roster) : ControllerBase
     {
         private const string DefaultScenario = "winter-storm";
 
@@ -28,6 +30,10 @@ namespace bbna_hackmw26.Server.Controllers
             }
 
             var facility = Load(Path.Combine(DataRoot, "facility.json"));
+
+            // Head counts come from the employees table, so the sidebar and the people block always agree.
+            var employees = roster.GetEmployees();
+            facility["population"] = JsonSerializer.SerializeToNode(RosterStore.Population(employees), JsonSerializerOptions.Web);
             var zone = TimeZoneInfo.FindSystemTimeZoneById(facility["timeZone"]!.GetValue<string>());
             var now = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone);
 
@@ -53,7 +59,7 @@ namespace bbna_hackmw26.Server.Controllers
                 ["facility"] = facility,
                 ["recommendation"] = chosen["recommendation"]!.DeepClone(),
                 ["weather"] = weather,
-                ["people"] = Load(Path.Combine(DataRoot, "roster.json")),
+                ["people"] = JsonSerializer.SerializeToNode(RosterStore.Summarize(employees), JsonSerializerOptions.Web),
                 ["thresholds"] = Load(Path.Combine(DataRoot, "thresholds.json")),
                 ["messageTemplates"] = Load(Path.Combine(DataRoot, "message-templates.json")),
             });

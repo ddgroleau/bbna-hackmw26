@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { recordDecision } from '../api';
-import type { AnalysisState, DecisionRecordDetail, LiveForecast, LiveWeather, Posture, Situation } from '../api';
+import type { AnalysisState, Audience, DecisionRecordDetail, LiveForecast, LiveWeather, Posture, Situation } from '../api';
 import { Icon, PageHead } from '../components';
 import { AUDIENCES, AUDIENCE_ORDER, POSTURES, POSTURE_ORDER, formatCount, formatCountdown, formatDateTime, formatTemp, formatTime, useNow } from '../format';
 
@@ -32,6 +32,11 @@ export function SituationPage({
 }: Props) {
     const { facility, decisionWindow } = situation;
     const busy = loading || analysis.status === 'loading';
+    // The impact follows the manager's decision once it is logged, and the agent's recommendation until then.
+    const decidedPosture = record?.record.status === 'Decided' ? record.record.finalPosture : null;
+    const impact: ImpactBasis | undefined = decidedPosture
+        ? { posture: decidedPosture, basis: 'Decided' }
+        : analysis.status === 'ready' ? { posture: analysis.data.posture, basis: 'Agent recommendation' } : undefined;
     return (
         <>
             <PageHead
@@ -65,7 +70,7 @@ export function SituationPage({
                 </div>
                 <div className="stack">
                     <DecisionWindowCard situation={situation} />
-                    <PeopleImpactCard situation={situation} />
+                    <PeopleImpactCard situation={situation} impact={impact} />
                 </div>
             </div>
         </>
@@ -418,9 +423,47 @@ function DecisionWindowCard({ situation }: { situation: Situation }) {
     );
 }
 
-function PeopleImpactCard({ situation }: { situation: Situation }) {
+interface ImpactBasis {
+    posture: Posture;
+    basis: 'Decided' | 'Agent recommendation';
+}
+
+// What each group does under each posture. Mirrors MockData/message-templates.json; `changed`
+// marks a workday that differs from a normal day.
+const IMPACT: Record<Posture, Record<Audience, { outcome: string; changed: boolean }>> = {
+    normal: {
+        teleworkReady: { outcome: 'Regular schedule', changed: false },
+        onsite: { outcome: 'Report at regular time', changed: false },
+        essential: { outcome: 'Report at regular time', changed: false },
+    },
+    delay: {
+        teleworkReady: { outcome: 'Arrive by 10 AM or telework', changed: true },
+        onsite: { outcome: 'Arrive by 10 AM', changed: true },
+        essential: { outcome: 'Report at normal time', changed: false },
+    },
+    early_dismissal: {
+        teleworkReady: { outcome: 'Leave by 1 PM, telework the rest', changed: true },
+        onsite: { outcome: 'Released at 1 PM', changed: true },
+        essential: { outcome: 'Secure building, leave by 2 PM', changed: true },
+    },
+    telework: {
+        teleworkReady: { outcome: 'May telework or take leave', changed: true },
+        onsite: { outcome: 'Report or take leave', changed: true },
+        essential: { outcome: 'Report at normal time', changed: false },
+    },
+    closure: {
+        teleworkReady: { outcome: 'Telework full day', changed: true },
+        onsite: { outcome: 'Weather and safety leave', changed: true },
+        essential: { outcome: 'Report as directed by voice call', changed: true },
+    },
+};
+
+function PeopleImpactCard({ situation, impact }: { situation: Situation; impact?: ImpactBasis }) {
     const { staff, audiences } = situation.people;
     const includedShare = (staff.recipients / staff.assigned) * 100;
+    const outcomes = impact && IMPACT[impact.posture];
+    const tone = impact && POSTURES[impact.posture].tone;
+    const changed = outcomes && AUDIENCE_ORDER.reduce((sum, id) => sum + (outcomes[id].changed ? audiences[id] : 0), 0);
 
     return (
         <section className="card">
@@ -428,6 +471,11 @@ function PeopleImpactCard({ situation }: { situation: Situation }) {
                 <h2>People impact</h2>
                 <Icon name="users" size={24} />
             </div>
+            <p className="small accent impact-basis">
+                {impact
+                    ? `Under ${POSTURES[impact.posture].label.toLowerCase()} · ${impact.basis}`
+                    : 'Waiting for the agent’s recommendation…'}
+            </p>
 
             <p className="big-count"><strong>{formatCount(staff.recipients)}</strong> employees to notify</p>
             <div className="meter" role="img" aria-label={`${staff.recipients} of ${staff.assigned} employees included`}>
@@ -438,14 +486,25 @@ function PeopleImpactCard({ situation }: { situation: Situation }) {
                 <span><i className="dot off" />{staff.excluded} excluded</span>
             </p>
 
-            <dl className="facts compact">
-                {AUDIENCE_ORDER.map(id => (
-                    <div key={id}><dt>{AUDIENCES[id]}</dt><dd>{formatCount(audiences[id])}</dd></div>
-                ))}
-            </dl>
+            <ul className="impact-groups">
+                {AUDIENCE_ORDER.map(id => {
+                    const outcome = outcomes?.[id];
+                    return (
+                        <li key={id}>
+                            <i className={`dot ${outcome?.changed ? tone : 'off'}`} />
+                            <div>
+                                <strong>{AUDIENCES[id]}</strong>
+                                <span>{outcome?.outcome ?? '—'}</span>
+                            </div>
+                            <span className="impact-count">{formatCount(audiences[id])}</span>
+                        </li>
+                    );
+                })}
+            </ul>
 
             <p className="small accent card-foot">
-                Each group receives instructions for its assignment. {staff.essential} essential personnel also get a voice call.
+                {changed !== undefined && `${formatCount(changed)} of ${formatCount(staff.recipients)} employees have a changed workday. `}
+                {staff.essential} essential personnel also get a voice call.
             </p>
         </section>
     );

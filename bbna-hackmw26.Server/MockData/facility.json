@@ -29,11 +29,6 @@
     "label": "8 AM–5 PM",
     "days": [ "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" ]
   },
-  "population": {
-    "employees": 75,
-    "essentialPersonnel": 10,
-    "teleworkEligible": 55
-  },
   "hazards": [ "Ice storms", "Tornadoes", "Flooding" ],
   "essentialRoles": [
     "Facility manager",

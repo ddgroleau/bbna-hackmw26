@@ -1,0 +1,605 @@
+{
+  "dataNote": "Fictional people for a demo. Loaded into the employees table at startup.",
+  "employees": [
+    {
+      "id": "E001",
+      "name": "Denise Harlan",
+      "role": "Facility Manager",
+      "assignment": "Essential",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E002",
+      "name": "Victor Ruiz",
+      "role": "IT Operations Specialist",
+      "assignment": "Essential",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E003",
+      "name": "Alicia Abbott",
+      "role": "IT Operations Specialist",
+      "assignment": "Essential",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E004",
+      "name": "Brandon Holloway",
+      "role": "IT Operations Specialist",
+      "assignment": "Essential",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E005",
+      "name": "Carmen Okafor",
+      "role": "Security Liaison",
+      "assignment": "Essential",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E006",
+      "name": "Darius Vasquez",
+      "role": "Security Liaison",
+      "assignment": "Essential",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E007",
+      "name": "Elena Cho",
+      "role": "Data Release Coordinator",
+      "assignment": "Essential",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E008",
+      "name": "Felix Jacobs",
+      "role": "Data Release Coordinator",
+      "assignment": "Essential",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E009",
+      "name": "Grace Reyes",
+      "role": "Building Engineer",
+      "assignment": "Essential",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E010",
+      "name": "Hector Bishop",
+      "role": "Building Engineer",
+      "assignment": "Essential",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E011",
+      "name": "Priya Natarajan",
+      "role": "Agricultural Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E012",
+      "name": "Hannah Lindqvist",
+      "role": "Research Economist",
+      "assignment": "TeleworkReady",
+      "status": "Leave",
+      "accommodation": null
+    },
+    {
+      "id": "E013",
+      "name": "Tom Beckett",
+      "role": "Statistician",
+      "assignment": "TeleworkReady",
+      "status": "Travel",
+      "accommodation": null
+    },
+    {
+      "id": "E014",
+      "name": "Irene Ingram",
+      "role": "Agricultural Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E015",
+      "name": "Jamal Dawson",
+      "role": "Research Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E016",
+      "name": "Kara Kaur",
+      "role": "Statistician",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E017",
+      "name": "Luis Ramsey",
+      "role": "Data Scientist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E018",
+      "name": "Monica Yates",
+      "role": "Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E019",
+      "name": "Nathan Farrell",
+      "role": "Research Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": "TextFirst"
+    },
+    {
+      "id": "E020",
+      "name": "Olivia Mercer",
+      "role": "Program Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E021",
+      "name": "Pedro Vaughn",
+      "role": "Writer-Editor",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E022",
+      "name": "Quinn Engel",
+      "role": "IT Specialist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E023",
+      "name": "Rosa Lopez",
+      "role": "GIS Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E024",
+      "name": "Samuel Garner",
+      "role": "Agricultural Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E025",
+      "name": "Tara Novak",
+      "role": "Research Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E026",
+      "name": "Umar Underwood",
+      "role": "Statistician",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E027",
+      "name": "Vera Brennan",
+      "role": "Data Scientist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E028",
+      "name": "Wesley Iverson",
+      "role": "Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E029",
+      "name": "Ximena Patel",
+      "role": "Research Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E030",
+      "name": "Yusuf Zamora",
+      "role": "Program Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E031",
+      "name": "Zoe Hurst",
+      "role": "Writer-Editor",
+      "assignment": "TeleworkReady",
+      "status": "Leave",
+      "accommodation": null
+    },
+    {
+      "id": "E032",
+      "name": "Adrian Castillo",
+      "role": "IT Specialist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E033",
+      "name": "Bianca Jensen",
+      "role": "GIS Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E034",
+      "name": "Caleb Quintero",
+      "role": "Agricultural Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E035",
+      "name": "Diana Xu",
+      "role": "Research Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E036",
+      "name": "Ethan Easton",
+      "role": "Statistician",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": "Relay"
+    },
+    {
+      "id": "E037",
+      "name": "Fiona Lam",
+      "role": "Data Scientist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E038",
+      "name": "Gavin Tran",
+      "role": "Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E039",
+      "name": "Hana Duarte",
+      "role": "Research Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E040",
+      "name": "Isaac Keller",
+      "role": "Program Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E041",
+      "name": "Julia Fischer",
+      "role": "Writer-Editor",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E042",
+      "name": "Kevin Mendoza",
+      "role": "IT Specialist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E043",
+      "name": "Lena Thornton",
+      "role": "GIS Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E044",
+      "name": "Marcus Alvarez",
+      "role": "Agricultural Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E045",
+      "name": "Nadia Hargrove",
+      "role": "Research Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E046",
+      "name": "Owen Ortega",
+      "role": "Statistician",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E047",
+      "name": "Paula Young",
+      "role": "Data Scientist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E048",
+      "name": "Rafael Grimes",
+      "role": "Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E049",
+      "name": "Sofia Barnes",
+      "role": "Research Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E050",
+      "name": "Trevor Ibarra",
+      "role": "Program Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E051",
+      "name": "Uma Pruitt",
+      "role": "Writer-Editor",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E052",
+      "name": "Victor Whitaker",
+      "role": "IT Specialist",
+      "assignment": "TeleworkReady",
+      "status": "Leave",
+      "accommodation": null
+    },
+    {
+      "id": "E053",
+      "name": "Wendy Delgado",
+      "role": "GIS Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E054",
+      "name": "Xavier Kowalski",
+      "role": "Agricultural Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E055",
+      "name": "Yvonne Sutton",
+      "role": "Research Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E056",
+      "name": "Zane Coleman",
+      "role": "Statistician",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E057",
+      "name": "Amara Jordan",
+      "role": "Data Scientist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E058",
+      "name": "Bruno Ellis",
+      "role": "Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E059",
+      "name": "Celeste Lindgren",
+      "role": "Research Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E060",
+      "name": "Dmitri Sato",
+      "role": "Program Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E061",
+      "name": "Esme Zimmerman",
+      "role": "Writer-Editor",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E062",
+      "name": "Farah Gupta",
+      "role": "IT Specialist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E063",
+      "name": "Gideon Nash",
+      "role": "GIS Analyst",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E064",
+      "name": "Helena Walsh",
+      "role": "Agricultural Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E065",
+      "name": "Ivan Foster",
+      "role": "Research Economist",
+      "assignment": "TeleworkReady",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E066",
+      "name": "Gloria Benton",
+      "role": "Administrative Officer",
+      "assignment": "OnSite",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E067",
+      "name": "Alicia Novak",
+      "role": "Administrative Assistant",
+      "assignment": "OnSite",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E068",
+      "name": "Brandon Underwood",
+      "role": "Mail and Records Clerk",
+      "assignment": "OnSite",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E069",
+      "name": "Carmen Brennan",
+      "role": "Budget Technician",
+      "assignment": "OnSite",
+      "status": "Active",
+      "accommodation": "TextFirst"
+    },
+    {
+      "id": "E070",
+      "name": "Darius Iverson",
+      "role": "Procurement Technician",
+      "assignment": "OnSite",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E071",
+      "name": "Elena Patel",
+      "role": "Facilities Technician",
+      "assignment": "OnSite",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E072",
+      "name": "Felix Zamora",
+      "role": "Library Technician",
+      "assignment": "OnSite",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E073",
+      "name": "Grace Hurst",
+      "role": "Property Custodian",
+      "assignment": "OnSite",
+      "status": "Leave",
+      "accommodation": null
+    },
+    {
+      "id": "E074",
+      "name": "Hector Castillo",
+      "role": "Front Desk Coordinator",
+      "assignment": "OnSite",
+      "status": "Active",
+      "accommodation": null
+    },
+    {
+      "id": "E075",
+      "name": "Irene Jensen",
+      "role": "Printing Technician",
+      "assignment": "OnSite",
+      "status": "Active",
+      "accommodation": null
+    }
+  ]
+}

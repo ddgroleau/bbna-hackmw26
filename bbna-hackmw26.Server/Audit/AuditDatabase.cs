@@ -23,6 +23,7 @@ namespace bbna_hackmw26.Server.Audit
         /// The database tables. Edit this to change the schema; the database is rebuilt on the next startup.
         ///   decision_records - the current state of each closure decision.
         ///   audit_events     - an append-only, hash-chained history each decision can be reconstructed from.
+        ///   employees        - the facility roster, reloaded from MockData/employees.json at startup (see RosterStore).
         /// The triggers stop the history being edited or deleted through SQL.
         /// </summary>
         public const string Schema = """
@@ -69,6 +70,15 @@ namespace bbna_hackmw26.Server.Audit
             CREATE TRIGGER decision_records_final BEFORE UPDATE ON decision_records
             WHEN OLD.status = 'Decided'
             BEGIN SELECT RAISE(ABORT, 'decided records are immutable'); END;
+
+            CREATE TABLE employees (
+                id            TEXT PRIMARY KEY,
+                name          TEXT NOT NULL,
+                role          TEXT NOT NULL,
+                assignment    TEXT NOT NULL CHECK (assignment IN ('Essential', 'TeleworkReady', 'OnSite')),
+                status        TEXT NOT NULL CHECK (status IN ('Active', 'Leave', 'Travel')),
+                accommodation TEXT CHECK (accommodation IN ('TextFirst', 'Relay'))
+            );
             """;
 
         /// <summary>
