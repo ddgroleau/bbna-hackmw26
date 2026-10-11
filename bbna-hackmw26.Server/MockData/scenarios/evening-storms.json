@@ -1,0 +1,45 @@
+{
+  "id": "evening-storms",
+  "label": "Evening severe storms (early departure)",
+  "recommendation": {
+    "posture": "early_dismissal",
+    "level": "action",
+    "confidence": 76,
+    "thresholdSummary": "Action threshold crossed: Severe Thunderstorm Watch with storms reaching the area during the evening commute",
+    "explanation": "A Severe Thunderstorm Watch runs from 2 PM to 10 PM. A line of storms is forecast to reach Kansas City between 4 and 6 PM with hail up to 1.5 in and gusts near 55 mph at the office, right as the evening commute begins. The morning and most of the workday stay dry, so the office can open on time; releasing employees by 2:30 PM gets them home before the storms arrive.",
+    "whatCouldChange": "Storms slowing to arrive after 6 PM would support normal hours. A Severe Thunderstorm Warning with confirmed damage, downed power lines, or a blocked route would support closing the office.",
+    "triggers": [
+      { "rule": "Active NWS alerts", "observed": "Severe Thunderstorm Watch 2–10 PM", "threshold": "Watch or Warning during the evening commute", "crossed": true },
+      { "rule": "Storm arrival", "observed": "4–6 PM", "threshold": "During the evening commute", "crossed": true },
+      { "rule": "Hail", "observed": "Up to 1.5 in", "threshold": "≥ 1 in", "crossed": true },
+      { "rule": "Wind gusts at the office", "observed": "55 mph", "threshold": "≥ 58 mph", "crossed": false }
+    ],
+    "alternatives": [
+      { "posture": "normal", "note": "Sends 70 employees home into large hail and 55 mph gusts at 5 PM." },
+      { "posture": "telework", "note": "Reasonable for the 51 telework-ready employees, but not required: the morning commute is dry." },
+      { "posture": "closure", "note": "Not supported: no damage, power loss, or blocked routes." }
+    ]
+  },
+  "weather": {
+    "alerts": [
+      {
+        "event": "Severe Thunderstorm Watch", "severity": "Severe", "certainty": "Possible", "urgency": "Future",
+        "timing": "2 PM – 10 PM", "area": "Jackson County, MO",
+        "headline": "Severe thunderstorms possible this afternoon and evening. Scattered large hail up to 1.5 inches and damaging wind gusts to 70 mph possible."
+      }
+    ],
+    "current": {
+      "conditions": "Mostly cloudy, humid", "temperatureF": 72, "windChillF": null, "windDirection": "S",
+      "windSpeedMph": 12, "windGustMph": 22, "humidityPct": 84, "visibilityMi": 10
+    },
+    "forecast": [
+      { "period": "Overnight", "window": "12–5 AM", "shortForecast": "Mostly cloudy", "temperatureF": 72, "windChillF": null, "windDirection": "S", "windSpeedMph": 12, "windGustMph": 22, "precipChancePct": 10, "snowIn": 0, "iceIn": 0 },
+      { "period": "Morning commute", "window": "5–8 AM", "shortForecast": "Partly cloudy, humid", "temperatureF": 73, "windChillF": null, "windDirection": "S", "windSpeedMph": 13, "windGustMph": 24, "precipChancePct": 10, "snowIn": 0, "iceIn": 0 },
+      { "period": "Workday", "window": "8 AM–4 PM", "shortForecast": "Hot and humid; storms developing after 3 PM", "temperatureF": 88, "windChillF": null, "windDirection": "S", "windSpeedMph": 16, "windGustMph": 30, "precipChancePct": 40, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening commute", "window": "4–6 PM", "shortForecast": "Severe thunderstorms likely: large hail, damaging wind", "temperatureF": 76, "windChillF": null, "windDirection": "SW", "windSpeedMph": 25, "windGustMph": 55, "precipChancePct": 80, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening", "window": "6–10 PM", "shortForecast": "Thunderstorms ending, then clearing", "temperatureF": 68, "windChillF": null, "windDirection": "NW", "windSpeedMph": 14, "windGustMph": 30, "precipChancePct": 50, "snowIn": 0, "iceIn": 0 }
+    ],
+    "totals": { "snowIn": 0, "iceIn": 0, "minWindChillF": null, "maxGustMph": 55 },
+    "roads": { "status": "Clear", "detail": "Dry pavement on all monitored routes this morning. Expect ponding, low visibility in heavy rain, and possible debris on roads from 4 PM." }
+  }
+}

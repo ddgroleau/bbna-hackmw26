@@ -1,0 +1,50 @@
+{
+  "id": "flash-flood",
+  "label": "Flash flooding (closure)",
+  "recommendation": {
+    "posture": "closure",
+    "level": "critical",
+    "confidence": 84,
+    "thresholdSummary": "Critical threshold crossed: Flash Flood Warning covering the access routes, about 14 in of water on a critical route",
+    "explanation": "3.4 in of rain fell overnight and a Flash Flood Warning covers downtown Kansas City until 10 AM. Southwest Boulevard along Turkey Creek, one of the office's two main access routes, is closed with about 14 in of water, and several underpasses are flooded. Another 0.5 to 1 in of rain is forecast through 9 AM, so water won't recede before the morning commute. Close the office: telework-ready employees can work remotely, and no one should drive through flooded roads.",
+    "whatCouldChange": "Rain ending before 6 AM, the warning being cancelled, and routes reopening by 9 AM would support a delayed arrival. Water entering the building would keep it closed.",
+    "triggers": [
+      { "rule": "Flash Flood Warning", "observed": "Until 10 AM, covers the facility and access routes", "threshold": "Covers the facility or critical access", "crossed": true },
+      { "rule": "Water on a critical access route", "observed": "About 14 in (Southwest Boulevard)", "threshold": "≥ 12 in", "crossed": true },
+      { "rule": "Peak rainfall rate", "observed": "1.6 in/hr", "threshold": "≥ 1 in/hr", "crossed": true },
+      { "rule": "Facility safe to occupy", "observed": "No water reported in the building", "threshold": "Unsafe to occupy", "crossed": false }
+    ],
+    "alternatives": [
+      { "posture": "delay", "note": "Not supported: rain continues until 9 AM and the route water won't recede by 10 AM." },
+      { "posture": "telework", "note": "Close to equivalent, but closure is clearer for the 9 on-site-only employees who cannot work remotely." },
+      { "posture": "normal", "note": "Not supported: a Flash Flood Warning covers the access routes." }
+    ]
+  },
+  "weather": {
+    "alerts": [
+      {
+        "event": "Flash Flood Warning", "severity": "Severe", "certainty": "Likely", "urgency": "Immediate",
+        "timing": "Until 10 AM", "area": "Jackson County, MO",
+        "headline": "Flash flooding is ongoing. Between 2 and 4 inches of rain have fallen, with another inch possible. Turn around, don't drown when you reach flooded roads."
+      },
+      {
+        "event": "Flood Watch", "severity": "Moderate", "certainty": "Possible", "urgency": "Expected",
+        "timing": "Until 1 PM", "area": "Jackson County, MO",
+        "headline": "Additional heavy rain may cause creeks and streams to rise out of their banks. Low-water crossings and urban underpasses are most at risk."
+      }
+    ],
+    "current": {
+      "conditions": "Heavy rain", "temperatureF": 64, "windChillF": null, "windDirection": "E",
+      "windSpeedMph": 14, "windGustMph": 24, "humidityPct": 98, "visibilityMi": 2
+    },
+    "forecast": [
+      { "period": "Overnight", "window": "12–5 AM", "shortForecast": "Heavy rain and thunderstorms", "temperatureF": 64, "windChillF": null, "windDirection": "E", "windSpeedMph": 14, "windGustMph": 26, "precipChancePct": 100, "snowIn": 0, "iceIn": 0 },
+      { "period": "Morning commute", "window": "5–8 AM", "shortForecast": "Rain, heavy at times", "temperatureF": 63, "windChillF": null, "windDirection": "NE", "windSpeedMph": 12, "windGustMph": 22, "precipChancePct": 90, "snowIn": 0, "iceIn": 0 },
+      { "period": "Workday", "window": "8 AM–4 PM", "shortForecast": "Rain ending by 10 AM, then cloudy", "temperatureF": 66, "windChillF": null, "windDirection": "N", "windSpeedMph": 10, "windGustMph": 18, "precipChancePct": 40, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening commute", "window": "4–6 PM", "shortForecast": "Mostly cloudy", "temperatureF": 68, "windChillF": null, "windDirection": "N", "windSpeedMph": 9, "windGustMph": 15, "precipChancePct": 10, "snowIn": 0, "iceIn": 0 },
+      { "period": "Evening", "window": "6–10 PM", "shortForecast": "Cloudy", "temperatureF": 62, "windChillF": null, "windDirection": "N", "windSpeedMph": 7, "windGustMph": 12, "precipChancePct": 10, "snowIn": 0, "iceIn": 0 }
+    ],
+    "totals": { "snowIn": 0, "iceIn": 0, "minWindChillF": null, "maxGustMph": 26 },
+    "roads": { "status": "Flooded", "detail": "Southwest Boulevard along Turkey Creek is closed with about 14 in of water, and several downtown underpasses are flooded. Avoid low-lying routes until water recedes." }
+  }
+}
